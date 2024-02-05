@@ -1,6 +1,6 @@
 # PAticAnimator
 
-*Python class for animating the time evolution of the p-atic order parameter and order parameter phase field.* 
+*Python class for animating the time evolution of the P-atic order parameter and order parameter phase field.* 
 
 *The idea is that once we are done with all of our calculations and we have computed the time evolution of the order parameter phase field, we can use this tool to make animations of the results.*
 
