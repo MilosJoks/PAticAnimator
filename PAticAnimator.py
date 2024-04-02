@@ -15,7 +15,7 @@ Unaddressed issues
     - p = 4 marker orientations?
 '''
 
-class PaticAnimator:
+class PAticAnimator:
     '''
     Class for animating the time evolution of the order parameter phase field.
 
