@@ -6,14 +6,11 @@ import matplotlib.markers as mmarkers
 
 from matplotlib.transforms import Affine2D
 
-'''
-Unaddressed issues
-    - How do defects fit into all this?
-    - What about vmin and vmax for color mapped markers? Is this even an issue, and if not - why not?
-    - Colorbars
-    - What's up with the other Matplotlib movie writers?
-    - p = 4 marker orientations?
-'''
+import os
+import shutil
+import imageio.v3 as iio
+
+import datetime
 
 class PAticAnimator:
     '''
@@ -387,7 +384,7 @@ class PAticAnimator:
                     [0,1], if alpha is greater than 1, the transparency will be set to 1.
 
             Keyword arguments:
-                which: 'patch' | 'point' | 'tick' | (default: 'patch')
+                which: str || 'patch' | 'point' | 'tick' | (default: 'patch')
                     Determines which of the marker sub-types the transparency should apply to.
 
         set_colormap(colormap)
@@ -418,15 +415,13 @@ class PAticAnimator:
                     Determines which frame of the animation to preview. If frame > nt, it will simply
                     be set to nt-1.
 
-        animate(address='.')
+        animate(ext='gif')
             Makes the animation of the phase field/ order parameter time evolution and saves it to the
-            user-supplied address.
+            same location as the script from which the method is called.
 
             Keyword arguments:
-                address: 'str' || (default: '.')
-                    Sets the adress for where to save the animation. The address can be given as a
-                    relative link (the default adress is simply the same folder as the script from
-                    which the animation is being made) or as an absolute link.
+                ext: str || 'gif' | 'mp4 | (default: 'gif')
+                    Sets the output file type for the animation.
     '''
 
     _marker_types = ("patch","point","tick","patch & point","patch & tick","point & tick","all")
@@ -492,7 +487,7 @@ class PAticAnimator:
         self.pf_transparency = 1.0
         self.colormap = "twilight"
 
-        self.fig = plt.figure(figsize=(10.0,10.0))
+        self.fig = plt.figure(figsize=(12.0,10.0))
         self.ax1 = self.fig.add_subplot(111,facecolor='whitesmoke')
         self.ax2 = None
 
@@ -676,7 +671,6 @@ class PAticAnimator:
         parameter to plot, how they're grouped and what mode they're to be displayed in.
 
         Called in:
-            - __init__
             - preview
             - animate
 
@@ -688,12 +682,8 @@ class PAticAnimator:
             self._vy = np.sin((self.phi/180)*np.pi)
 
         if self.which == "both" and self.grouping == "separate":
-            self.cont = self.ax1.contourf(self.x,self.y,self.phi[0,:,:],500,
-                                          cmap=self.colormap,
-                                          alpha=self.pf_transparency,
-                                          vmin=np.min(self.phi[0,:,:]),
-                                          vmax=np.max(self.phi[0,:,:]),
-                                          zorder=0)
+            self.cont = self.ax1.pcolormesh(self.x,self.y,self.phi[0,:,:],shading='nearest',
+                                            cmap=self.colormap,alpha=self.pf_transparency)
             if self.p == 1:
                 self.arrow = self.ax2.quiver(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],self._vx[0,::self._slc_y,::self._slc_x],self._vy[0,::self._slc_y,::self._slc_x],
                                              color='k',
@@ -729,12 +719,8 @@ class PAticAnimator:
             self.ax2.set_ylim([self.y0,self.y1])
         else:
             if self.which == "pf":
-                self.cont = self.ax1.contourf(self.x,self.y,self.phi[0,:,:],500,
-                                              cmap=self.colormap,
-                                              alpha=self.pf_transparency,
-                                              vmin=np.min(self.phi[0,:,:]),
-                                              vmax=np.max(self.phi[0,:,:]),
-                                              zorder=0)
+                self.cont = self.ax1.pcolormesh(self.x,self.y,self.phi[0,:,:],shading='nearest',
+                                                cmap=self.colormap,alpha=self.pf_transparency)
             elif self.which == "op":
                 if self.p == 1:
                     self.arrow = self.ax1.quiver(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],self._vx[0,::self._slc_y,::self._slc_x],self._vy[0,::self._slc_y,::self._slc_x],
@@ -767,12 +753,8 @@ class PAticAnimator:
                     self._set_marker()
             elif self.which == "both":
                 if self.mode == 0:
-                    self.cont = self.ax1.contourf(self.x,self.y,self.phi[0,:,:],500,
-                                                  cmap=self.colormap,
-                                                  alpha=self.pf_transparency,
-                                                  vmin=np.min(self.phi[0,:,:]),
-                                                  vmax=np.max(self.phi[0,:,:]),
-                                                  zorder=0)
+                    self.cont = self.ax1.pcolormesh(self.x,self.y,self.phi[0,:,:],shading='nearest',
+                                                    cmap=self.colormap,alpha=self.pf_transparency)
                     if self.p == 1:
                         self.arrow = self.ax1.quiver(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],self._vx[0,::self._slc_y,::self._slc_x],self._vy[0,::self._slc_y,::self._slc_x],
                                                      color='k',
@@ -795,12 +777,8 @@ class PAticAnimator:
                         point_kwarg = {"c":self.marker_colors["point"]}
                     patch_kwarg = {"c":self.phi[0,::self._slc_y,::self._slc_x],"cmap":self.colormap,"vmin":np.min(self.phi[0,:,:]),"vmax":np.max(self.phi[0,:,:])}
                 elif self.mode == 2:
-                    self.cont = self.ax1.contourf(self.x,self.y,self.phi[0,:,:],500,
-                                                  cmap=self.colormap,
-                                                  alpha=self.pf_transparency,
-                                                  vmin=np.min(self.phi[0,:,:]),
-                                                  vmax=np.max(self.phi[0,:,:]),
-                                                  zorder=0)
+                    self.cont = self.ax1.pcolormesh(self.x,self.y,self.phi[0,:,:],shading='nearest',
+                                                    cmap=self.colormap,alpha=self.pf_transparency)
                     if self.p == 1:
                         self.arrow = self.ax1.quiver(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],self._vx[0,::self._slc_y,::self._slc_x],self._vy[0,::self._slc_y,::self._slc_x],self.phi[0,::self._slc_y,::self._slc_x],
                                                      cmap=self.colormap,
@@ -840,6 +818,9 @@ class PAticAnimator:
 
         self.ax1.set_xlim([self.x0,self.x1])
         self.ax1.set_ylim([self.y0,self.y1])
+
+        self.CB = self.fig.colorbar(self.cont,ax=self.ax1,fraction=0.07,pad=0.0175)
+
         self.fig.tight_layout()
 
     def _set_marker_size(self):
@@ -1007,130 +988,6 @@ class PAticAnimator:
             self.point.set_paths(point_paths)
             self.tick.set_paths(tick_paths)
 
-    def _init_frame(self):
-        '''
-        Internal method for setting up the first frame of the animation by computing the correct
-        orientation for every order parameter marker based on the phase field array at the first
-        time step.
-
-        This method is also used in Matplotlib's FuncAnimation class in order to allow for
-        blitting.
-
-        Called in:
-            - preview
-
-        Calls on:
-            - _update_markers
-        '''
-        if self.which == "pf":
-            self.cont.remove()
-            self.cont = self.ax1.contourf(self.x,self.y,self.phi[0,:,:],500,
-                                          cmap=self.colormap,
-                                          alpha=self.pf_transparency,
-                                          vmin=np.min(self.phi[0,:,:]),
-                                          vmax=np.max(self.phi[0,:,:]),
-                                          zorder=0)
-        else:
-            if self.p == 1:
-                self.arrow.set_UVC(self._vx[0,::self._slc_y,::self._slc_x],self._vy[0,::self._slc_y,::self._slc_x])
-            elif self.p > 1:
-                patch_markers = []
-                point_markers = []
-                tick_markers = []
-
-                for j in range(0,len(self.phi[0,:,:]),self._slc_y):
-                    for k in range(0,len(self.phi[0,j,:]),self._slc_x):
-                        t = Affine2D().rotate_deg(self.phi[0,j,k]-90)
-                        patch_markers.append(mpath.Path.unit_regular_polygon(self.p).transformed(t))
-                        point_markers.append(mpath.Path.unit_regular_asterisk(self.p).transformed(t))
-                        tick_markers.append(mpath.Path.unit_regular_asterisk(1).transformed(t))
-
-                self._update_markers(patch_markers,point_markers,tick_markers)
-
-            if self.which == "both" and self.grouping == "together":
-                if self.mode == 0:
-                    self.cont.remove()
-                    self.cont = self.ax1.contourf(self.x,self.y,self.phi[0,:,:],500,
-                                                  cmap=self.colormap,
-                                                  alpha=self.pf_transparency,
-                                                  vmin=np.min(self.phi[0,:,:]),
-                                                  vmax=np.max(self.phi[0,:,:]),
-                                                  zorder=0)
-                elif self.mode == 1:
-                    if self.p == 1:
-                        self.arrow.set_array(self.phi[0,::self._slc_y,::self._slc_x].ravel())
-                    elif self.p == 2:
-                        self.point.set_array(self.phi[0,::self._slc_y,::self._slc_x].ravel())
-                    else:
-                        self.patch.set_array(self.phi[0,::self._slc_y,::self._slc_x].ravel())
-                elif self.mode == 2:
-                    self.cont.remove()
-                    self.cont = self.ax1.contourf(self.x,self.y,self.phi[0,:,:],500,
-                                                  cmap=self.colormap,
-                                                  alpha=self.pf_transparency,
-                                                  vmin=np.min(self.phi[0,:,:]),
-                                                  vmax=np.max(self.phi[0,:,:]),
-                                                  zorder=0)
-                    if self.p == 1:
-                        self.arrow.set_array(self.phi[0,::self._slc_y,::self._slc_x].ravel())
-                    elif self.p == 2:
-                        self.point.set_array(self.phi[0,::self._slc_y,::self._slc_x].ravel())
-                    else:
-                        self.patch.set_array(self.phi[0,::self._slc_y,::self._slc_x].ravel())
-            elif self.which == "both" and self.grouping == "separate":
-                self.cont.remove()
-                self.cont = self.ax1.contourf(self.x,self.y,self.phi[0,:,:],500,
-                                              cmap=self.colormap,
-                                              alpha=self.pf_transparency,
-                                              vmin=np.min(self.phi[0,:,:]),
-                                              vmax=np.max(self.phi[0,:,:]),
-                                              zorder=0)
-
-        if self.which == "pf":
-            return [self.cont]
-        else:
-            if self.p == 1:
-                if self.which == 'op' or (self.which == 'both' and self.grouping == 'together' and self.mode == 1):
-                    return [self.arrow]
-                else:
-                    return [self.cont,self.arrow]
-            else:
-                if self.marker_type == "patch":
-                    if self.which == "op" or (self.which == "both" and self.grouping == "together" and self.mode == 1):
-                        return [self.patch]
-                    else:
-                        return [self.cont,self.patch]
-                elif self.marker_type == "point":
-                    if self.which == "op" or (self.which == "both" and self.grouping == "together" and self.mode == 1):
-                        return [self.point]
-                    else:
-                        return [self.cont,self.point]
-                elif self.marker_type == "tick":
-                    if self.which == "op" or (self.which == "both" and self.grouping == "together" and self.mode == 1):
-                        return [self.tick]
-                    else:
-                        return [self.cont,self.tick]
-                elif self.marker_type == "patch & point":
-                    if self.which == "op" or (self.which == "both" and self.grouping == "together" and self.mode == 1):
-                        return [self.patch,self.point]
-                    else:
-                        return [self.cont,self.patch,self.point]
-                elif self.marker_type == "patch & tick":
-                    if self.which == "op" or (self.which == "both" and self.grouping == "together" and self.mode == 1):
-                        return [self.patch,self.tick]
-                    else:
-                        return [self.cont,self.patch,self.tick]
-                elif self.marker_type == "point & tick":
-                    if self.which == "op" or (self.which == "both" and self.grouping == "together" and self.mode == 1):
-                        return [self.point,self.tick]
-                    else:
-                        return [self.cont,self.point,self.tick]
-                elif self.marker_type == "all":
-                    if self.which == "op" or (self.which == "both" and self.grouping == "together" and self.mode == 1):
-                        return [self.patch,self.point,self.tick]
-                    else:
-                        return [self.cont,self.patch,self.point,self.tick]
-
     def _draw_frame(self,i):
         '''
         Internal method for drawing every frame of the animation by updating the phase field and/
@@ -1148,12 +1005,8 @@ class PAticAnimator:
         '''
         if self.which == "pf":
             self.cont.remove()
-            self.cont = self.ax1.contourf(self.x,self.y,self.phi[i,:,:],500,
-                                          cmap=self.colormap,
-                                          alpha=self.pf_transparency,
-                                          vmin=np.min(self.phi[i,:,:]),
-                                          vmax=np.max(self.phi[i,:,:]),
-                                          zorder=0)
+            self.cont = self.ax1.pcolormesh(self.x,self.y,self.phi[i,:,:],shading='nearest',
+                                            cmap=self.colormap,alpha=self.pf_transparency)
         else:
             if self.p == 1:
                 self.arrow.set_UVC(self._vx[i,::self._slc_y,::self._slc_x],self._vy[i,::self._slc_y,::self._slc_x])
@@ -1174,12 +1027,8 @@ class PAticAnimator:
             if self.which == "both" and self.grouping == "together":
                 if self.mode == 0:
                     self.cont.remove()
-                    self.cont = self.ax1.contourf(self.x,self.y,self.phi[i,:,:],500,
-                                                  cmap=self.colormap,
-                                                  alpha=self.pf_transparency,
-                                                  vmin=np.min(self.phi[i,:,:]),
-                                                  vmax=np.max(self.phi[i,:,:]),
-                                                  zorder=0)
+                    self.cont = self.ax1.pcolormesh(self.x,self.y,self.phi[i,:,:],shading='nearest',
+                                                    cmap=self.colormap,alpha=self.pf_transparency)
                 elif self.mode == 1:
                     if self.p == 1:
                         self.arrow.set_array(self.phi[i,::self._slc_y,::self._slc_x].ravel())
@@ -1189,12 +1038,8 @@ class PAticAnimator:
                         self.patch.set_array(self.phi[i,::self._slc_y,::self._slc_x].ravel())
                 elif self.mode == 2:
                     self.cont.remove()
-                    self.cont = self.ax1.contourf(self.x,self.y,self.phi[i,:,:],500,
-                                                  cmap=self.colormap,
-                                                  alpha=self.pf_transparency,
-                                                  vmin=np.min(self.phi[i,:,:]),
-                                                  vmax=np.max(self.phi[i,:,:]),
-                                                  zorder=0)
+                    self.cont = self.ax1.pcolormesh(self.x,self.y,self.phi[i,:,:],shading='nearest',
+                                                    cmap=self.colormap,alpha=self.pf_transparency)
                     if self.p == 1:
                         self.arrow.set_array(self.phi[i,::self._slc_y,::self._slc_x].ravel())
                     elif self.p == 2:
@@ -1203,57 +1048,8 @@ class PAticAnimator:
                         self.patch.set_array(self.phi[i,::self._slc_y,::self._slc_x].ravel())
             elif self.which == "both" and self.grouping == "separate":
                 self.cont.remove()
-                self.cont = self.ax1.contourf(self.x,self.y,self.phi[i,:,:],500,
-                                              cmap=self.colormap,
-                                              alpha=self.pf_transparency,
-                                              vmin=np.min(self.phi[i,:,:]),
-                                              vmax=np.max(self.phi[i,:,:]),
-                                              zorder=0)
-
-        if self.which == "pf":
-            return [self.cont]
-        else:
-            if self.p == 1:
-                if self.which == 'op' or (self.which == 'both' and self.grouping == 'together' and self.mode == 1):
-                    return [self.arrow]
-                else:
-                    return [self.cont,self.arrow]
-            else:
-                if self.marker_type == "patch":
-                    if self.which == "op" or (self.which == "both" and self.grouping == "together" and self.mode == 1):
-                        return [self.patch]
-                    else:
-                        return [self.cont,self.patch]
-                elif self.marker_type == "point":
-                    if self.which == "op" or (self.which == "both" and self.grouping == "together" and self.mode == 1):
-                        return [self.point]
-                    else:
-                        return [self.cont,self.point]
-                elif self.marker_type == "tick":
-                    if self.which == "op" or (self.which == "both" and self.grouping == "together" and self.mode == 1):
-                        return [self.tick]
-                    else:
-                        return [self.cont,self.tick]
-                elif self.marker_type == "patch & point":
-                    if self.which == "op" or (self.which == "both" and self.grouping == "together" and self.mode == 1):
-                        return [self.patch,self.point]
-                    else:
-                        return [self.cont,self.patch,self.point]
-                elif self.marker_type == "patch & tick":
-                    if self.which == "op" or (self.which == "both" and self.grouping == "together" and self.mode == 1):
-                        return [self.patch,self.tick]
-                    else:
-                        return [self.cont,self.patch,self.tick]
-                elif self.marker_type == "point & tick":
-                    if self.which == "op" or (self.which == "both" and self.grouping == "together" and self.mode == 1):
-                        return [self.point,self.tick]
-                    else:
-                        return [self.cont,self.point,self.tick]
-                elif self.marker_type == "all":
-                    if self.which == "op" or (self.which == "both" and self.grouping == "together" and self.mode == 1):
-                        return [self.patch,self.point,self.tick]
-                    else:
-                        return [self.cont,self.patch,self.point,self.tick]
+                self.cont = self.ax1.pcolormesh(self.x,self.y,self.phi[i,:,:],shading='nearest',
+                                                cmap=self.colormap,alpha=self.pf_transparency)
 
     def set_grid(self,c,which='both'):
         '''
@@ -1409,14 +1205,14 @@ class PAticAnimator:
         if self.which == "both":
             if self.grouping != grouping.lower() and grouping.lower() == "separate":
                 self.ax1.remove()
-                self.fig.set_figwidth(20.0)
+                self.fig.set_figwidth(24.0)
                 self.fig.set_figheight(10.0)
                 self.ax1 = self.fig.add_subplot(121,facecolor='whitesmoke')
                 self.ax2 = self.fig.add_subplot(122,facecolor='whitesmoke')
             elif self.grouping != grouping.lower() and grouping.lower() == "together":
                 self.ax1.remove()
                 self.ax2.remove()
-                self.fig.set_figwidth(10.0)
+                self.fig.set_figwidth(12.0)
                 self.fig.set_figheight(10.0)
                 self.ax1 = self.fig.add_subplot(111,facecolor='whitesmoke')
 
@@ -1744,28 +1540,34 @@ class PAticAnimator:
                     frame = self.nt - 1
                 self._draw_frame(frame)
             else:
-                self._init_frame()
+                self._draw_frame(0)
+        plt.show()
 
-            plt.show()
-
-    def animate(self,address='.'):
+    def animate(self,ext='gif'):
         '''
         Makes the animation of the phase field/ order parameter time evolution and saves it to the
-        user-supplied address.
+        same location as the script from which the method is called.
 
         Keyword arguments:
-            address: 'str' || (default: '.')
-                Sets the adress for where to save the animation. The address can be given as a
-                relative link (the default adress is simply the same folder as the script from
-                which the animation is being made) or as an absolute link.
+            ext: str || 'gif' | 'mp4 | (default: 'gif')
+                Sets the output file type for the animation.
         '''
-        if self.phi is None:
-            raise TypeError("""Cannot animate with no phase field data.""")
-        elif self.x is None or self.y is None:
-            raise Exception("""Cannot make a plot without a fully defined coordinate grid.""")
-        else:
-            self._initialize_plot()
-            self.ani = animation.FuncAnimation(self.fig,self._draw_frame,self.nt,init_func=self._init_frame,blit=True,interval=1,repeat=True)
-            address = address.rstrip('/')
-            filename = "/%d-atic_%s_%s_%d_%.2f,%.2f_%s.gif" % (self.p,self.which,self.grouping,self.mode,self.marker_density_x,self.marker_density_y,self.colormap)
-            self.ani.save(address + filename)
+
+        if ext.lower() not in ['gif','mp4']:
+            raise ValueError("""The ext keyword argment must be either 'gif' or 'mp4'.""")
+
+        self._initialize_plot()
+
+        folder_name = '_%s_frames' % datetime.datetime.now().strftime('%y%m%d_%H%M%S')
+        os.mkdir('./' + folder_name)
+        for i in range(self.nt):
+            self._draw_frame(i)
+            plt.savefig('./' + folder_name + '/frame_%d.png' % i)
+
+        ims = []
+        for i in range(self.nt):
+            ims.append(iio.imread('./' + folder_name + '/frame_%d.png' % i))
+        frames = np.stack(ims,axis=0)
+        iio.imwrite('PAA_%s.%s' % (datetime.datetime.now().strftime('%y%m%d_%H%M%S'),ext.lower()),frames)
+
+        shutil.rmtree('./' + folder_name)
