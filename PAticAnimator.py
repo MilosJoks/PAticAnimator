@@ -683,7 +683,7 @@ class PAticAnimator:
 
         if self.which == "both" and self.grouping == "separate":
             self.cont = self.ax1.pcolormesh(self.x,self.y,self.phi[0,:,:],shading='nearest',
-                                            cmap=self.colormap,alpha=self.pf_transparency)
+                                            cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.phi),vmax=np.max(self.phi))
             if self.p == 1:
                 self.arrow = self.ax2.quiver(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],self._vx[0,::self._slc_y,::self._slc_x],self._vy[0,::self._slc_y,::self._slc_x],
                                              color='k',
@@ -720,7 +720,7 @@ class PAticAnimator:
         else:
             if self.which == "pf":
                 self.cont = self.ax1.pcolormesh(self.x,self.y,self.phi[0,:,:],shading='nearest',
-                                                cmap=self.colormap,alpha=self.pf_transparency)
+                                                cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.phi),vmax=np.max(self.phi))
             elif self.which == "op":
                 if self.p == 1:
                     self.arrow = self.ax1.quiver(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],self._vx[0,::self._slc_y,::self._slc_x],self._vy[0,::self._slc_y,::self._slc_x],
@@ -754,7 +754,7 @@ class PAticAnimator:
             elif self.which == "both":
                 if self.mode == 0:
                     self.cont = self.ax1.pcolormesh(self.x,self.y,self.phi[0,:,:],shading='nearest',
-                                                    cmap=self.colormap,alpha=self.pf_transparency)
+                                                    cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.phi),vmax=np.max(self.phi))
                     if self.p == 1:
                         self.arrow = self.ax1.quiver(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],self._vx[0,::self._slc_y,::self._slc_x],self._vy[0,::self._slc_y,::self._slc_x],
                                                      color='k',
@@ -778,7 +778,7 @@ class PAticAnimator:
                     patch_kwarg = {"c":self.phi[0,::self._slc_y,::self._slc_x],"cmap":self.colormap,"vmin":np.min(self.phi[0,:,:]),"vmax":np.max(self.phi[0,:,:])}
                 elif self.mode == 2:
                     self.cont = self.ax1.pcolormesh(self.x,self.y,self.phi[0,:,:],shading='nearest',
-                                                    cmap=self.colormap,alpha=self.pf_transparency)
+                                                    cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.phi),vmax=np.max(self.phi))
                     if self.p == 1:
                         self.arrow = self.ax1.quiver(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],self._vx[0,::self._slc_y,::self._slc_x],self._vy[0,::self._slc_y,::self._slc_x],self.phi[0,::self._slc_y,::self._slc_x],
                                                      cmap=self.colormap,
@@ -1004,9 +1004,11 @@ class PAticAnimator:
             - _update_markers
         '''
         if self.which == "pf":
+            self.CB.remove()
             self.cont.remove()
             self.cont = self.ax1.pcolormesh(self.x,self.y,self.phi[i,:,:],shading='nearest',
-                                            cmap=self.colormap,alpha=self.pf_transparency)
+                                            cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.phi),vmax=np.max(self.phi))
+            self.CB = self.fig.colorbar(self.cont,ax=self.ax1,fraction=0.07,pad=0.0175)
         else:
             if self.p == 1:
                 self.arrow.set_UVC(self._vx[i,::self._slc_y,::self._slc_x],self._vy[i,::self._slc_y,::self._slc_x])
@@ -1026,9 +1028,11 @@ class PAticAnimator:
 
             if self.which == "both" and self.grouping == "together":
                 if self.mode == 0:
+                    self.CB.remove()
                     self.cont.remove()
                     self.cont = self.ax1.pcolormesh(self.x,self.y,self.phi[i,:,:],shading='nearest',
-                                                    cmap=self.colormap,alpha=self.pf_transparency)
+                                                    cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.phi),vmax=np.max(self.phi))
+                    self.CB = self.fig.colorbar(self.cont,ax=self.ax1,fraction=0.07,pad=0.0175)
                 elif self.mode == 1:
                     if self.p == 1:
                         self.arrow.set_array(self.phi[i,::self._slc_y,::self._slc_x].ravel())
@@ -1037,9 +1041,11 @@ class PAticAnimator:
                     else:
                         self.patch.set_array(self.phi[i,::self._slc_y,::self._slc_x].ravel())
                 elif self.mode == 2:
+                    self.CB.remove()
                     self.cont.remove()
                     self.cont = self.ax1.pcolormesh(self.x,self.y,self.phi[i,:,:],shading='nearest',
-                                                    cmap=self.colormap,alpha=self.pf_transparency)
+                                                    cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.phi),vmax=np.max(self.phi))
+                    self.CB = self.fig.colorbar(self.cont,ax=self.ax1,fraction=0.07,pad=0.0175)
                     if self.p == 1:
                         self.arrow.set_array(self.phi[i,::self._slc_y,::self._slc_x].ravel())
                     elif self.p == 2:
@@ -1047,9 +1053,11 @@ class PAticAnimator:
                     else:
                         self.patch.set_array(self.phi[i,::self._slc_y,::self._slc_x].ravel())
             elif self.which == "both" and self.grouping == "separate":
+                self.CB.remove()
                 self.cont.remove()
                 self.cont = self.ax1.pcolormesh(self.x,self.y,self.phi[i,:,:],shading='nearest',
-                                                cmap=self.colormap,alpha=self.pf_transparency)
+                                                cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.phi),vmax=np.max(self.phi))
+                self.CB = self.fig.colorbar(self.cont,ax=self.ax1,fraction=0.07,pad=0.0175)
 
     def set_grid(self,c,which='both'):
         '''
