@@ -36,7 +36,7 @@ class PAticAnimator:
             correct marker for the order parameter plots.
 
     Keyword arguments:
-        phi: 3D array || (default: None)
+        field: 3D array || (default: None)
             Phase field data used to draw the frames of the animation, as well as to determine
             the size of the coordinate grids.
 
@@ -103,7 +103,7 @@ class PAticAnimator:
            y-coordinate grid. Defaults to None until the coordinate grid is fully constructed as
            described above (see also the set_grid class method).
 
-        phi: 3D array || (default: None)
+        field: 3D array || (default: None)
             Phase field array.
 
         which: str || 'pf' | 'op' | 'both' | (default: 'pf')
@@ -429,7 +429,7 @@ class PAticAnimator:
     _grouping_list = ["separate","together"]
     _mode_list = [0,1,2]
 
-    def __init__(self,p,phi=None,x=None,y=None):
+    def __init__(self,p,field=None,x=None,y=None):
         '''
         Initializes an instance of the PaticAnimator class based on the supplied parameters.
 
@@ -439,12 +439,12 @@ class PAticAnimator:
                 determine the proper marker style for the p-atic of interest.
 
         Keyword arguments:
-            phi: array || (default: None)
+            field: array || (default: None)
                 The phase field array. This must be a 3D array of shape (nt,ny,nx), with nt being
                 the number of time steps in the evolution of the phase field, i.e. the number of
                 frames for the animation, and nx and ny specifying the size of the coordinate grid.
 
-                If phi is the only keyword argument that is given, then the animator will
+                If field is the only keyword argument that is given, then the animator will
                 automatically construct a coordinate grid on the unit square [0,1]x[0,1].
 
             x,y: tuple, list, array || (default: None)
@@ -498,8 +498,8 @@ class PAticAnimator:
         self._slc_x = 1
         self._slc_y = 1
 
-        if phi is None:
-            self.phi = None
+        if field is None:
+            self.field = None
 
             self.nx = None
             self.x = None
@@ -541,14 +541,14 @@ class PAticAnimator:
 
                 self.y0 = np.min(y)
                 self.y1 = np.max(y)
-        elif phi is not None:
-            self._check_phi(phi)
+        elif field is not None:
+            self._check_phi(field)
 
-            self.nx = phi.shape[2]
-            self.ny = phi.shape[1]
-            self.nt = phi.shape[0]
+            self.nx = field.shape[2]
+            self.ny = field.shape[1]
+            self.nt = field.shape[0]
 
-            self.phi = phi
+            self.field = field
 
             self._slc_x = self.nx//int(self.marker_density_x*self.nx)
             self._slc_y = self.ny//int(self.marker_density_y*self.ny)
@@ -570,7 +570,7 @@ class PAticAnimator:
 
             self._set_marker_size()
 
-    def _check_phi(self,phi):
+    def _check_phi(self,field):
         '''
         Internal method for checking that the phase field array is of the correct type and has the
         right shape.
@@ -582,10 +582,15 @@ class PAticAnimator:
         Calls on:
             - None
         '''
-        if not isinstance(phi,np.ndarray):
-            raise TypeError("""phi must be of type <class 'numpy.ndarray'>.""")
-        elif isinstance(phi,np.ndarray) and len(phi.shape) != 3:
-            raise Exception("""phi must be a three-dimensional array with shape (nt,ny,nx).""")
+        if not isinstance(field,np.ndarray):
+            raise TypeError("""field must be of type <class 'numpy.ndarray'>.""")
+        elif isinstance(field,np.ndarray) and len(field.shape) != 3:
+            raise Exception("""field must be a three-dimensional array with shape (nt,ny,nx).""")
+
+        if field.dtype == np.complex_:
+            self.complex_field = True
+        else:
+            self.complex_field = False
 
     def _check_coordinate(self,c):
         '''
@@ -611,8 +616,8 @@ class PAticAnimator:
         elif isinstance(c,np.ndarray):
             if len(c.shape) > 2:
                 raise Exception("""The coordinate array must either be one- or two-dimensional.""")
-            elif self.phi is not None and len(c.shape) == 2 and c.shape != self.phi.shape[1:]: # ---------------------------------------------------- CHECK IF THIS IS NECESSARY
-                raise Exception("""The shape of the coordinate grid must be (ny,nx) = (phi.shape[1],phi.shape[2]) = %s.""" % (self.phi.shape[1:],))
+            elif self.field is not None and len(c.shape) == 2 and c.shape != self.field.shape[1:]: # ---------------------------------------------------- CHECK IF THIS IS NECESSARY
+                raise Exception("""The shape of the coordinate grid must be (ny,nx) = (field.shape[1],field.shape[2]) = %s.""" % (self.field.shape[1:],))
         else:
             raise TypeError("""The coordinate keyword arguments must be either of type <class 'tuple'>, <class 'list'> or <class 'numpy.ndarray'>.""")
 
@@ -681,12 +686,12 @@ class PAticAnimator:
         self.ax1.set_facecolor(self.ax_fc)
 
         if self.p == 1:
-            self._vx = np.cos((self.phi/180)*np.pi)
-            self._vy = np.sin((self.phi/180)*np.pi)
+            self._vx = np.cos((self.field/180)*np.pi)
+            self._vy = np.sin((self.field/180)*np.pi)
 
         if self.which == "both" and self.grouping == "separate":
-            self.cont = self.ax1.pcolormesh(self.x,self.y,self.phi[0,:,:],shading='nearest',
-                                            cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.phi),vmax=np.max(self.phi))
+            self.cont = self.ax1.pcolormesh(self.x,self.y,self.field[0,:,:],shading='nearest',
+                                            cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.field),vmax=np.max(self.field))
             if self.p == 1:
                 self.arrow = self.ax2.quiver(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],self._vx[0,::self._slc_y,::self._slc_x],self._vy[0,::self._slc_y,::self._slc_x],
                                              color='k',
@@ -722,9 +727,12 @@ class PAticAnimator:
             self.ax2.set_ylim([self.y0,self.y1])
         else:
             if self.which == "pf":
-                self.cont = self.ax1.pcolormesh(self.x,self.y,self.phi[0,:,:],shading='nearest',
-                                                cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.phi),vmax=np.max(self.phi))
+                self.cont = self.ax1.pcolormesh(self.x,self.y,self.field[0,:,:],shading='nearest',
+                                                cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.field),vmax=np.max(self.field))
             elif self.which == "op":
+                self.fig.set_figheight(10.0)
+                self.fig.set_figwidth(10.0)
+
                 if self.p == 1:
                     self.arrow = self.ax1.quiver(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],self._vx[0,::self._slc_y,::self._slc_x],self._vy[0,::self._slc_y,::self._slc_x],
                                                  color='k',
@@ -756,8 +764,8 @@ class PAticAnimator:
                     self._set_marker()
             elif self.which == "both":
                 if self.mode == 0:
-                    self.cont = self.ax1.pcolormesh(self.x,self.y,self.phi[0,:,:],shading='nearest',
-                                                    cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.phi),vmax=np.max(self.phi))
+                    self.cont = self.ax1.pcolormesh(self.x,self.y,self.field[0,:,:],shading='nearest',
+                                                    cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.field),vmax=np.max(self.field))
                     if self.p == 1:
                         self.arrow = self.ax1.quiver(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],self._vx[0,::self._slc_y,::self._slc_x],self._vy[0,::self._slc_y,::self._slc_x],
                                                      color='k',
@@ -769,30 +777,30 @@ class PAticAnimator:
                         patch_kwarg = {"c":self.marker_colors["patch"]}
                 elif self.mode == 1:
                     if self.p == 1:
-                        self.arrow = self.ax1.quiver(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],self._vx[0,::self._slc_y,::self._slc_x],self._vy[0,::self._slc_y,::self._slc_x],self.phi[0,::self._slc_y,::self._slc_x],
+                        self.arrow = self.ax1.quiver(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],self._vx[0,::self._slc_y,::self._slc_x],self._vy[0,::self._slc_y,::self._slc_x],self.field[0,::self._slc_y,::self._slc_x],
                                                      cmap=self.colormap,
                                                      pivot='tail',
                                                      width=0.0025,headwidth=2.5,headlength=5,headaxislength=4.5,
                                                      scale_units='xy',scale=None,zorder=1)
                     elif self.p == 2:
-                        point_kwarg = {"c":self.phi[0,::self._slc_y,::self._slc_x],"cmap":self.colormap}
+                        point_kwarg = {"c":self.field[0,::self._slc_y,::self._slc_x],"cmap":self.colormap}
                     else:
                         point_kwarg = {"c":self.marker_colors["point"]}
-                    patch_kwarg = {"c":self.phi[0,::self._slc_y,::self._slc_x],"cmap":self.colormap,"vmin":np.min(self.phi[0,:,:]),"vmax":np.max(self.phi[0,:,:])}
+                    patch_kwarg = {"c":self.field[0,::self._slc_y,::self._slc_x],"cmap":self.colormap,"vmin":np.min(self.field[0,:,:]),"vmax":np.max(self.field[0,:,:])}
                 elif self.mode == 2:
-                    self.cont = self.ax1.pcolormesh(self.x,self.y,self.phi[0,:,:],shading='nearest',
-                                                    cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.phi),vmax=np.max(self.phi))
+                    self.cont = self.ax1.pcolormesh(self.x,self.y,self.field[0,:,:],shading='nearest',
+                                                    cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.field),vmax=np.max(self.field))
                     if self.p == 1:
-                        self.arrow = self.ax1.quiver(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],self._vx[0,::self._slc_y,::self._slc_x],self._vy[0,::self._slc_y,::self._slc_x],self.phi[0,::self._slc_y,::self._slc_x],
+                        self.arrow = self.ax1.quiver(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],self._vx[0,::self._slc_y,::self._slc_x],self._vy[0,::self._slc_y,::self._slc_x],self.field[0,::self._slc_y,::self._slc_x],
                                                      cmap=self.colormap,
                                                      pivot='tail',
                                                      width=0.0025,headwidth=2.5,headlength=5,headaxislength=4.5,
                                                      scale_units='xy',scale=None,zorder=1)
                     elif self.p == 2:
-                        point_kwarg = {"c":self.phi[0,::self._slc_y,::self._slc_x],"cmap":self.colormap}
+                        point_kwarg = {"c":self.field[0,::self._slc_y,::self._slc_x],"cmap":self.colormap}
                     else:
                         point_kwarg = {"c":self.marker_colors["point"]}
-                    patch_kwarg = {"c":self.phi[0,::self._slc_y,::self._slc_x],"cmap":self.colormap,"vmin":np.min(self.phi[0,:,:]),"vmax":np.max(self.phi[0,:,:])}
+                    patch_kwarg = {"c":self.field[0,::self._slc_y,::self._slc_x],"cmap":self.colormap,"vmin":np.min(self.field[0,:,:]),"vmax":np.max(self.field[0,:,:])}
 
                 if self.p > 1:
                     self.patch = self.ax1.scatter(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],
@@ -822,8 +830,9 @@ class PAticAnimator:
         self.ax1.set_xlim([self.x0,self.x1])
         self.ax1.set_ylim([self.y0,self.y1])
 
-        self.CB = self.fig.colorbar(self.cont,ax=self.ax1,fraction=0.07,pad=0.0175)
-        self.CB.ax.set_facecolor(self.ax_fc)
+        if self.which != 'op':
+            self.CB = self.fig.colorbar(self.cont,ax=self.ax1,fraction=0.07,pad=0.0175)
+            self.CB.ax.set_facecolor(self.ax_fc)
 
         self.fig.tight_layout()
 
@@ -1010,8 +1019,8 @@ class PAticAnimator:
         if self.which == "pf":
             self.CB.remove()
             self.cont.remove()
-            self.cont = self.ax1.pcolormesh(self.x,self.y,self.phi[i,:,:],shading='nearest',
-                                            cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.phi),vmax=np.max(self.phi))
+            self.cont = self.ax1.pcolormesh(self.x,self.y,self.field[i,:,:],shading='nearest',
+                                            cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.field),vmax=np.max(self.field))
             self.CB = self.fig.colorbar(self.cont,ax=self.ax1,fraction=0.07,pad=0.0175)
             self.CB.ax.set_facecolor(self.ax_fc)
         else:
@@ -1022,9 +1031,9 @@ class PAticAnimator:
                 point_markers = []
                 tick_markers = []
 
-                for j in range(0,len(self.phi[i,:,:]),self._slc_y):
-                    for k in range(0,len(self.phi[i,j,:]),self._slc_x):
-                        t = Affine2D().rotate_deg(self.phi[i,j,k]-90)
+                for j in range(0,len(self.field[i,:,:]),self._slc_y):
+                    for k in range(0,len(self.field[i,j,:]),self._slc_x):
+                        t = Affine2D().rotate_deg(self.field[i,j,k]-90)
                         patch_markers.append(mpath.Path.unit_regular_polygon(self.p).transformed(t))
                         point_markers.append(mpath.Path.unit_regular_asterisk(self.p).transformed(t))
                         tick_markers.append(mpath.Path.unit_regular_asterisk(1).transformed(t))
@@ -1035,35 +1044,35 @@ class PAticAnimator:
                 if self.mode == 0:
                     self.CB.remove()
                     self.cont.remove()
-                    self.cont = self.ax1.pcolormesh(self.x,self.y,self.phi[i,:,:],shading='nearest',
-                                                    cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.phi),vmax=np.max(self.phi))
+                    self.cont = self.ax1.pcolormesh(self.x,self.y,self.field[i,:,:],shading='nearest',
+                                                    cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.field),vmax=np.max(self.field))
                     self.CB = self.fig.colorbar(self.cont,ax=self.ax1,fraction=0.07,pad=0.0175)
                     self.CB.ax.set_facecolor(self.ax_fc)
                 elif self.mode == 1:
                     if self.p == 1:
-                        self.arrow.set_array(self.phi[i,::self._slc_y,::self._slc_x].ravel())
+                        self.arrow.set_array(self.field[i,::self._slc_y,::self._slc_x].ravel())
                     elif self.p == 2:
-                        self.point.set_array(self.phi[i,::self._slc_y,::self._slc_x].ravel())
+                        self.point.set_array(self.field[i,::self._slc_y,::self._slc_x].ravel())
                     else:
-                        self.patch.set_array(self.phi[i,::self._slc_y,::self._slc_x].ravel())
+                        self.patch.set_array(self.field[i,::self._slc_y,::self._slc_x].ravel())
                 elif self.mode == 2:
                     self.CB.remove()
                     self.cont.remove()
-                    self.cont = self.ax1.pcolormesh(self.x,self.y,self.phi[i,:,:],shading='nearest',
-                                                    cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.phi),vmax=np.max(self.phi))
+                    self.cont = self.ax1.pcolormesh(self.x,self.y,self.field[i,:,:],shading='nearest',
+                                                    cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.field),vmax=np.max(self.field))
                     self.CB = self.fig.colorbar(self.cont,ax=self.ax1,fraction=0.07,pad=0.0175)
                     self.CB.ax.set_facecolor(self.ax_fc)
                     if self.p == 1:
-                        self.arrow.set_array(self.phi[i,::self._slc_y,::self._slc_x].ravel())
+                        self.arrow.set_array(self.field[i,::self._slc_y,::self._slc_x].ravel())
                     elif self.p == 2:
-                        self.point.set_array(self.phi[i,::self._slc_y,::self._slc_x].ravel())
+                        self.point.set_array(self.field[i,::self._slc_y,::self._slc_x].ravel())
                     else:
-                        self.patch.set_array(self.phi[i,::self._slc_y,::self._slc_x].ravel())
+                        self.patch.set_array(self.field[i,::self._slc_y,::self._slc_x].ravel())
             elif self.which == "both" and self.grouping == "separate":
                 self.CB.remove()
                 self.cont.remove()
-                self.cont = self.ax1.pcolormesh(self.x,self.y,self.phi[i,:,:],shading='nearest',
-                                                cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.phi),vmax=np.max(self.phi))
+                self.cont = self.ax1.pcolormesh(self.x,self.y,self.field[i,:,:],shading='nearest',
+                                                cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.field),vmax=np.max(self.field))
                 self.CB = self.fig.colorbar(self.cont,ax=self.ax1,fraction=0.07,pad=0.0175)
                 self.CB.ax.set_facecolor(self.ax_fc)
 
@@ -1097,19 +1106,19 @@ class PAticAnimator:
             if which == "x":
                 self.x0 = np.min(c)
                 self.x1 = np.max(c)
-                if self.phi is not None:
+                if self.field is not None:
                     self._set_grid_from_coordinate([self.x0,self.x1],which='x')
             elif which == "y":
                 self.y0 = np.min(c)
                 self.y1 = np.max(c)
-                if self.phi is not None:
+                if self.field is not None:
                     self._set_grid_from_coordinate([self.y0,self.y1],which='y')
             elif which == "both":
                 self.x0 = np.min(c)
                 self.x1 = np.max(c)
                 self.y0 = np.min(c)
                 self.y1 = np.max(c)
-                if self.phi is not None:
+                if self.field is not None:
                     self._set_grid_from_coordinate(c,which='both')
 
     def set_phi(self,data):
@@ -1130,7 +1139,7 @@ class PAticAnimator:
                 The phase field data must be given as a 3D array with shape (nt,ny,nx).
         '''
         self._check_phi(data)
-        self.phi = data
+        self.field = data
         self.nx = data.shape[2]
         self.ny = data.shape[1]
         self.nt = data.shape[0]
@@ -1548,7 +1557,7 @@ class PAticAnimator:
                 Determines which frame of the animation to preview. If frame > nt, it will simply
                 be set to nt-1.
         '''
-        if self.phi is None:
+        if self.field is None:
             raise Exception("""No data to display.""")
         elif self.x is None or self.y is None:
             raise Exception("""Cannot make a plot without a fully defined coordinate grid.""")
