@@ -700,6 +700,37 @@ class PAticAnimator:
             self.cont = self.ax1.pcolormesh(self.x,self.y,self.RGBA,shading='nearest',cmap=self.colormap,vmin=np.min(self.thetas),vmax=np.max(self.thetas))
             self.CB = self.fig.colorbar(self.SM,ax=self.ax1,fraction=0.07,pad=0.0175,ticks=np.linspace(np.min(self.thetas),np.max(self.thetas),9))
             self.CB.ax.set_facecolor(self.ax_fc)
+
+            tick_labels = []
+            for i in range(9):
+                n = np.abs(8 - 2*i)
+                d = 4*self.p
+
+                nr = n/np.gcd(n,d)
+                dr = d/np.gcd(n,d)
+
+                if i < 4:
+                    if nr == 1 and dr == 1:
+                        label = r'$-\pi$'
+                    elif nr == 1:
+                        label = r'$-\frac{\pi}{%d}$' % dr
+                    elif dr == 1:
+                        label = r'$-%d\pi$' % nr
+                    else:
+                        label = r'$-\frac{%d\pi}{%d}$' % (nr,dr)
+                elif i == 4:
+                    label = r'$0$'
+                else:
+                    if nr == 1 and dr == 1:
+                        label = r'$\pi$'
+                    elif nr == 1:
+                        label = r'$\frac{\pi}{%d}$' % dr
+                    elif dr == 1:
+                        label = r'$%d\pi$' % nr
+                    else:
+                        label = r'$\frac{%d\pi}{%d}$' % (nr,dr)
+                tick_labels.append(label)
+            self.CB.set_ticklabels(tick_labels)
         else:
             if self.p == 1:
                 self._vx = np.cos((self.field/180)*np.pi)
@@ -1045,6 +1076,37 @@ class PAticAnimator:
             self.cont = self.ax1.pcolormesh(self.x,self.y,self.RGBA,shading='nearest',cmap=self.colormap,vmin=np.min(self.thetas),vmax=np.max(self.thetas))
             self.CB = self.fig.colorbar(self.SM,ax=self.ax1,fraction=0.07,pad=0.0175,ticks=np.linspace(np.min(self.thetas),np.max(self.thetas),9))
             self.CB.ax.set_facecolor(self.ax_fc)
+
+            tick_labels = []
+            for i in range(9):
+                n = np.abs(8 - 2*i)
+                d = 4*self.p
+
+                nr = n/np.gcd(n,d)
+                dr = d/np.gcd(n,d)
+
+                if i < 4:
+                    if nr == 1 and dr == 1:
+                        label = r'$-\pi$'
+                    elif nr == 1:
+                        label = r'$-\frac{\pi}{%d}$' % dr
+                    elif dr == 1:
+                        label = r'$-%d\pi$' % nr
+                    else:
+                        label = r'$-\frac{%d\pi}{%d}$' % (nr,dr)
+                elif i == 4:
+                    label = r'$0$'
+                else:
+                    if nr == 1 and dr == 1:
+                        label = r'$\pi$'
+                    elif nr == 1:
+                        label = r'$\frac{\pi}{%d}$' % dr
+                    elif dr == 1:
+                        label = r'$%d\pi$' % nr
+                    else:
+                        label = r'$\frac{%d\pi}{%d}$' % (nr,dr)
+                tick_labels.append(label)
+            self.CB.set_ticklabels(tick_labels)
         else:
             if self.which == "pf":
                 self.CB.remove()
