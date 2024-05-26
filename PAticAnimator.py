@@ -692,11 +692,13 @@ class PAticAnimator:
             self.rs_norm = (self.rs - np.min(self.rs))/(np.max(self.rs) - np.min(self.rs))
 
             self.SM = ScalarMappable(cmap=self.colormap)
+            self.SM.set_clim([np.min(self.thetas),np.max(self.thetas)])
+
             self.RGBA = self.SM.to_rgba(self.thetas[0,:,:])
             self.RGBA[:,:,-1] = self.rs_norm[0,:,:]
 
-            self.cont = self.ax1.pcolormesh(self.x,self.y,self.RGBA,shading='nearest',cmap=self.colormap)
-            self.CB = self.fig.colorbar(self.SM,ax=self.ax1,fraction=0.07,pad=0.0175,ticks=np.linspace(np.min(self.thetas[0,:,:]),np.max(self.thetas[0,:,:]),9))
+            self.cont = self.ax1.pcolormesh(self.x,self.y,self.RGBA,shading='nearest',cmap=self.colormap,vmin=np.min(self.thetas),vmax=np.max(self.thetas))
+            self.CB = self.fig.colorbar(self.SM,ax=self.ax1,fraction=0.07,pad=0.0175,ticks=np.linspace(np.min(self.thetas),np.max(self.thetas),9))
             self.CB.ax.set_facecolor(self.ax_fc)
         else:
             if self.p == 1:
@@ -1040,8 +1042,8 @@ class PAticAnimator:
             self.RGBA = self.SM.to_rgba(self.thetas[i,:,:])
             self.RGBA[:,:,-1] = self.rs_norm[i,:,:]
 
-            self.cont = self.ax1.pcolormesh(self.x,self.y,self.RGBA,shading='nearest',cmap=self.colormap)
-            self.CB = self.fig.colorbar(self.SM,ax=self.ax1,fraction=0.07,pad=0.0175,ticks=np.linspace(np.min(self.thetas[i,:,:]),np.max(self.thetas[i,:,:]),9))
+            self.cont = self.ax1.pcolormesh(self.x,self.y,self.RGBA,shading='nearest',cmap=self.colormap,vmin=np.min(self.thetas),vmax=np.max(self.thetas))
+            self.CB = self.fig.colorbar(self.SM,ax=self.ax1,fraction=0.07,pad=0.0175,ticks=np.linspace(np.min(self.thetas),np.max(self.thetas),9))
             self.CB.ax.set_facecolor(self.ax_fc)
         else:
             if self.which == "pf":
