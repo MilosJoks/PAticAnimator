@@ -1,10 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.animation as animation
 import matplotlib.path as mpath
 import matplotlib.markers as mmarkers
+import matplotlib.gridspec as mgs
 
 from matplotlib.transforms import Affine2D
+from matplotlib.cm import ScalarMappable
 
 import os
 import shutil
@@ -685,139 +686,48 @@ class PAticAnimator:
         '''
         self.ax1.set_facecolor(self.ax_fc)
 
-        if self.p == 1:
-            self._vx = np.cos((self.field/180)*np.pi)
-            self._vy = np.sin((self.field/180)*np.pi)
+        if self.complex_field:
+            self.thetas = np.angle(self.field)/self.p
+            self.rs = np.abs(self.field)
+            self.rs_norm = (self.rs - np.min(self.rs))/(np.max(self.rs) - np.min(self.rs))
 
-        if self.which == "both" and self.grouping == "separate":
-            self.cont = self.ax1.pcolormesh(self.x,self.y,self.field[0,:,:],shading='nearest',
-                                            cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.field),vmax=np.max(self.field))
-            if self.p == 1:
-                self.arrow = self.ax2.quiver(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],self._vx[0,::self._slc_y,::self._slc_x],self._vy[0,::self._slc_y,::self._slc_x],
-                                             color='k',
-                                             pivot='tail',
-                                             width=0.0025,headwidth=2.5,headlength=5,headaxislength=4.5,
-                                             scale_units='xy',scale=None,zorder=1)
-            else:
-                self.patch = self.ax2.scatter(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],
-                                              marker=self._markers["patch"],
-                                              s=self.marker_size,
-                                              c=self.marker_colors["patch"],
-                                              alpha=self.marker_transparencies["patch"],
-                                              linewidths=self.marker_linewidths["patch"],
-                                              zorder=1)
-                self.point = self.ax2.scatter(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],
-                                              marker=self._markers["point"],
-                                              s=self.marker_size,
-                                              c=self.marker_colors["point"],
-                                              alpha=self.marker_transparencies["point"],
-                                              linewidths=self.marker_linewidths["point"],
-                                              zorder=2)
-                self.tick = self.ax2.scatter(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],
-                                             marker=self._markers["tick"],
-                                             s=self.marker_size,
-                                             c=self.marker_colors["tick"],
-                                             alpha=self.marker_transparencies["tick"],
-                                             linewidths=self.marker_linewidths["tick"],
-                                             zorder=3)
+            self.SM = ScalarMappable(cmap=self.colormap)
+            self.RGBA = self.SM.to_rgba(self.thetas[0,:,:])
+            self.RGBA[:,:,-1] = self.rs_norm[0,:,:]
 
-                self._set_marker()
-
-            self.ax2.set_xlim([self.x0,self.x1])
-            self.ax2.set_ylim([self.y0,self.y1])
+            self.cont = self.ax1.pcolormesh(self.x,self.y,self.RGBA,shading='nearest',cmap=self.colormap)
+            self.CB = self.fig.colorbar(self.SM,ax=self.ax1,fraction=0.07,pad=0.0175,ticks=np.linspace(np.min(self.thetas[0,:,:]),np.max(self.thetas[0,:,:]),9))
+            self.CB.ax.set_facecolor(self.ax_fc)
         else:
-            if self.which == "pf":
+            if self.p == 1:
+                self._vx = np.cos((self.field/180)*np.pi)
+                self._vy = np.sin((self.field/180)*np.pi)
+
+            if self.which == "both" and self.grouping == "separate":
                 self.cont = self.ax1.pcolormesh(self.x,self.y,self.field[0,:,:],shading='nearest',
                                                 cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.field),vmax=np.max(self.field))
-            elif self.which == "op":
-                self.fig.set_figheight(10.0)
-                self.fig.set_figwidth(10.0)
-
                 if self.p == 1:
-                    self.arrow = self.ax1.quiver(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],self._vx[0,::self._slc_y,::self._slc_x],self._vy[0,::self._slc_y,::self._slc_x],
+                    self.arrow = self.ax2.quiver(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],self._vx[0,::self._slc_y,::self._slc_x],self._vy[0,::self._slc_y,::self._slc_x],
                                                  color='k',
                                                  pivot='tail',
                                                  width=0.0025,headwidth=2.5,headlength=5,headaxislength=4.5,
                                                  scale_units='xy',scale=None,zorder=1)
                 else:
-                    self.patch = self.ax1.scatter(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],
+                    self.patch = self.ax2.scatter(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],
                                                   marker=self._markers["patch"],
                                                   s=self.marker_size,
                                                   c=self.marker_colors["patch"],
                                                   alpha=self.marker_transparencies["patch"],
                                                   linewidths=self.marker_linewidths["patch"],
                                                   zorder=1)
-                    self.point = self.ax1.scatter(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],
+                    self.point = self.ax2.scatter(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],
                                                   marker=self._markers["point"],
                                                   s=self.marker_size,
                                                   c=self.marker_colors["point"],
                                                   alpha=self.marker_transparencies["point"],
                                                   linewidths=self.marker_linewidths["point"],
                                                   zorder=2)
-                    self.tick = self.ax1.scatter(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],
-                                                 marker=self._markers["tick"],
-                                                 s=self.marker_size,c=self.marker_colors["tick"],
-                                                 alpha=self.marker_transparencies["tick"],
-                                                 linewidths=self.marker_linewidths["tick"],
-                                                 zorder=3)
-
-                    self._set_marker()
-            elif self.which == "both":
-                if self.mode == 0:
-                    self.cont = self.ax1.pcolormesh(self.x,self.y,self.field[0,:,:],shading='nearest',
-                                                    cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.field),vmax=np.max(self.field))
-                    if self.p == 1:
-                        self.arrow = self.ax1.quiver(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],self._vx[0,::self._slc_y,::self._slc_x],self._vy[0,::self._slc_y,::self._slc_x],
-                                                     color='k',
-                                                     pivot='tail',
-                                                     width=0.0025,headwidth=2.5,headlength=5,headaxislength=4.5,
-                                                     scale_units='xy',scale=None,zorder=1)
-                    else:
-                        point_kwarg = {"c":self.marker_colors["point"]}
-                        patch_kwarg = {"c":self.marker_colors["patch"]}
-                elif self.mode == 1:
-                    if self.p == 1:
-                        self.arrow = self.ax1.quiver(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],self._vx[0,::self._slc_y,::self._slc_x],self._vy[0,::self._slc_y,::self._slc_x],self.field[0,::self._slc_y,::self._slc_x],
-                                                     cmap=self.colormap,
-                                                     pivot='tail',
-                                                     width=0.0025,headwidth=2.5,headlength=5,headaxislength=4.5,
-                                                     scale_units='xy',scale=None,zorder=1)
-                    elif self.p == 2:
-                        point_kwarg = {"c":self.field[0,::self._slc_y,::self._slc_x],"cmap":self.colormap}
-                    else:
-                        point_kwarg = {"c":self.marker_colors["point"]}
-                    patch_kwarg = {"c":self.field[0,::self._slc_y,::self._slc_x],"cmap":self.colormap,"vmin":np.min(self.field[0,:,:]),"vmax":np.max(self.field[0,:,:])}
-                elif self.mode == 2:
-                    self.cont = self.ax1.pcolormesh(self.x,self.y,self.field[0,:,:],shading='nearest',
-                                                    cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.field),vmax=np.max(self.field))
-                    if self.p == 1:
-                        self.arrow = self.ax1.quiver(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],self._vx[0,::self._slc_y,::self._slc_x],self._vy[0,::self._slc_y,::self._slc_x],self.field[0,::self._slc_y,::self._slc_x],
-                                                     cmap=self.colormap,
-                                                     pivot='tail',
-                                                     width=0.0025,headwidth=2.5,headlength=5,headaxislength=4.5,
-                                                     scale_units='xy',scale=None,zorder=1)
-                    elif self.p == 2:
-                        point_kwarg = {"c":self.field[0,::self._slc_y,::self._slc_x],"cmap":self.colormap}
-                    else:
-                        point_kwarg = {"c":self.marker_colors["point"]}
-                    patch_kwarg = {"c":self.field[0,::self._slc_y,::self._slc_x],"cmap":self.colormap,"vmin":np.min(self.field[0,:,:]),"vmax":np.max(self.field[0,:,:])}
-
-                if self.p > 1:
-                    self.patch = self.ax1.scatter(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],
-                                                  marker=self._markers["patch"],
-                                                  s=self.marker_size,
-                                                  alpha=self.marker_transparencies["patch"],
-                                                  linewidths=self.marker_linewidths["patch"],
-                                                  zorder=1,
-                                                  **patch_kwarg)
-                    self.point = self.ax1.scatter(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],
-                                                  marker=self._markers["point"],
-                                                  s=self.marker_size,
-                                                  alpha=self.marker_transparencies["point"],
-                                                  linewidths=self.marker_linewidths["point"],
-                                                  zorder=2,
-                                                  **point_kwarg)
-                    self.tick = self.ax1.scatter(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],
+                    self.tick = self.ax2.scatter(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],
                                                  marker=self._markers["tick"],
                                                  s=self.marker_size,
                                                  c=self.marker_colors["tick"],
@@ -827,12 +737,116 @@ class PAticAnimator:
 
                     self._set_marker()
 
-        self.ax1.set_xlim([self.x0,self.x1])
-        self.ax1.set_ylim([self.y0,self.y1])
+                self.ax2.set_xlim([self.x0,self.x1])
+                self.ax2.set_ylim([self.y0,self.y1])
+            else:
+                if self.which == "pf":
+                    self.cont = self.ax1.pcolormesh(self.x,self.y,self.field[0,:,:],shading='nearest',
+                                                    cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.field),vmax=np.max(self.field))
+                elif self.which == "op":
+                    self.fig.set_figheight(10.0)
+                    self.fig.set_figwidth(10.0)
 
-        if self.which != 'op':
-            self.CB = self.fig.colorbar(self.cont,ax=self.ax1,fraction=0.07,pad=0.0175)
-            self.CB.ax.set_facecolor(self.ax_fc)
+                    if self.p == 1:
+                        self.arrow = self.ax1.quiver(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],self._vx[0,::self._slc_y,::self._slc_x],self._vy[0,::self._slc_y,::self._slc_x],
+                                                     color='k',
+                                                     pivot='tail',
+                                                     width=0.0025,headwidth=2.5,headlength=5,headaxislength=4.5,
+                                                     scale_units='xy',scale=None,zorder=1)
+                    else:
+                        self.patch = self.ax1.scatter(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],
+                                                      marker=self._markers["patch"],
+                                                      s=self.marker_size,
+                                                      c=self.marker_colors["patch"],
+                                                      alpha=self.marker_transparencies["patch"],
+                                                      linewidths=self.marker_linewidths["patch"],
+                                                      zorder=1)
+                        self.point = self.ax1.scatter(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],
+                                                      marker=self._markers["point"],
+                                                      s=self.marker_size,
+                                                      c=self.marker_colors["point"],
+                                                      alpha=self.marker_transparencies["point"],
+                                                      linewidths=self.marker_linewidths["point"],
+                                                      zorder=2)
+                        self.tick = self.ax1.scatter(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],
+                                                     marker=self._markers["tick"],
+                                                     s=self.marker_size,c=self.marker_colors["tick"],
+                                                     alpha=self.marker_transparencies["tick"],
+                                                     linewidths=self.marker_linewidths["tick"],
+                                                     zorder=3)
+
+                        self._set_marker()
+                elif self.which == "both":
+                    if self.mode == 0:
+                        self.cont = self.ax1.pcolormesh(self.x,self.y,self.field[0,:,:],shading='nearest',
+                                                        cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.field),vmax=np.max(self.field))
+                        if self.p == 1:
+                            self.arrow = self.ax1.quiver(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],self._vx[0,::self._slc_y,::self._slc_x],self._vy[0,::self._slc_y,::self._slc_x],
+                                                         color='k',
+                                                         pivot='tail',
+                                                         width=0.0025,headwidth=2.5,headlength=5,headaxislength=4.5,
+                                                         scale_units='xy',scale=None,zorder=1)
+                        else:
+                            point_kwarg = {"c":self.marker_colors["point"]}
+                            patch_kwarg = {"c":self.marker_colors["patch"]}
+                    elif self.mode == 1:
+                        if self.p == 1:
+                            self.arrow = self.ax1.quiver(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],self._vx[0,::self._slc_y,::self._slc_x],self._vy[0,::self._slc_y,::self._slc_x],self.field[0,::self._slc_y,::self._slc_x],
+                                                         cmap=self.colormap,
+                                                         pivot='tail',
+                                                         width=0.0025,headwidth=2.5,headlength=5,headaxislength=4.5,
+                                                         scale_units='xy',scale=None,zorder=1)
+                        elif self.p == 2:
+                            point_kwarg = {"c":self.field[0,::self._slc_y,::self._slc_x],"cmap":self.colormap}
+                        else:
+                            point_kwarg = {"c":self.marker_colors["point"]}
+                        patch_kwarg = {"c":self.field[0,::self._slc_y,::self._slc_x],"cmap":self.colormap,"vmin":np.min(self.field[0,:,:]),"vmax":np.max(self.field[0,:,:])}
+                    elif self.mode == 2:
+                        self.cont = self.ax1.pcolormesh(self.x,self.y,self.field[0,:,:],shading='nearest',
+                                                        cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.field),vmax=np.max(self.field))
+                        if self.p == 1:
+                            self.arrow = self.ax1.quiver(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],self._vx[0,::self._slc_y,::self._slc_x],self._vy[0,::self._slc_y,::self._slc_x],self.field[0,::self._slc_y,::self._slc_x],
+                                                         cmap=self.colormap,
+                                                         pivot='tail',
+                                                         width=0.0025,headwidth=2.5,headlength=5,headaxislength=4.5,
+                                                         scale_units='xy',scale=None,zorder=1)
+                        elif self.p == 2:
+                            point_kwarg = {"c":self.field[0,::self._slc_y,::self._slc_x],"cmap":self.colormap}
+                        else:
+                            point_kwarg = {"c":self.marker_colors["point"]}
+                        patch_kwarg = {"c":self.field[0,::self._slc_y,::self._slc_x],"cmap":self.colormap,"vmin":np.min(self.field[0,:,:]),"vmax":np.max(self.field[0,:,:])}
+
+                    if self.p > 1:
+                        self.patch = self.ax1.scatter(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],
+                                                      marker=self._markers["patch"],
+                                                      s=self.marker_size,
+                                                      alpha=self.marker_transparencies["patch"],
+                                                      linewidths=self.marker_linewidths["patch"],
+                                                      zorder=1,
+                                                      **patch_kwarg)
+                        self.point = self.ax1.scatter(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],
+                                                      marker=self._markers["point"],
+                                                      s=self.marker_size,
+                                                      alpha=self.marker_transparencies["point"],
+                                                      linewidths=self.marker_linewidths["point"],
+                                                      zorder=2,
+                                                      **point_kwarg)
+                        self.tick = self.ax1.scatter(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],
+                                                     marker=self._markers["tick"],
+                                                     s=self.marker_size,
+                                                     c=self.marker_colors["tick"],
+                                                     alpha=self.marker_transparencies["tick"],
+                                                     linewidths=self.marker_linewidths["tick"],
+                                                     zorder=3)
+
+                        self._set_marker()
+
+            self.ax1.set_xlim([self.x0,self.x1])
+            self.ax1.set_ylim([self.y0,self.y1])
+
+            if self.which != 'op':
+                self.CB = self.fig.colorbar(self.cont,ax=self.ax1,fraction=0.07,pad=0.0175)
+                self.CB.ax.set_facecolor(self.ax_fc)
 
         self.fig.tight_layout()
 
@@ -1016,65 +1030,79 @@ class PAticAnimator:
         Calls on:
             - _update_markers
         '''
-        if self.which == "pf":
+        if self.complex_field:
             self.CB.remove()
             self.cont.remove()
-            self.cont = self.ax1.pcolormesh(self.x,self.y,self.field[i,:,:],shading='nearest',
-                                            cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.field),vmax=np.max(self.field))
-            self.CB = self.fig.colorbar(self.cont,ax=self.ax1,fraction=0.07,pad=0.0175)
+
+            GS = mgs.GridSpec(1,1,figure=self.fig)
+            self.ax1.set_subplotspec(GS[0])
+
+            self.RGBA = self.SM.to_rgba(self.thetas[i,:,:])
+            self.RGBA[:,:,-1] = self.rs_norm[i,:,:]
+
+            self.cont = self.ax1.pcolormesh(self.x,self.y,self.RGBA,shading='nearest',cmap=self.colormap)
+            self.CB = self.fig.colorbar(self.SM,ax=self.ax1,fraction=0.07,pad=0.0175,ticks=np.linspace(np.min(self.thetas[i,:,:]),np.max(self.thetas[i,:,:]),9))
             self.CB.ax.set_facecolor(self.ax_fc)
         else:
-            if self.p == 1:
-                self.arrow.set_UVC(self._vx[i,::self._slc_y,::self._slc_x],self._vy[i,::self._slc_y,::self._slc_x])
-            elif self.p > 1:
-                patch_markers = []
-                point_markers = []
-                tick_markers = []
-
-                for j in range(0,len(self.field[i,:,:]),self._slc_y):
-                    for k in range(0,len(self.field[i,j,:]),self._slc_x):
-                        t = Affine2D().rotate_deg(self.field[i,j,k]-90)
-                        patch_markers.append(mpath.Path.unit_regular_polygon(self.p).transformed(t))
-                        point_markers.append(mpath.Path.unit_regular_asterisk(self.p).transformed(t))
-                        tick_markers.append(mpath.Path.unit_regular_asterisk(1).transformed(t))
-
-                self._update_markers(patch_markers,point_markers,tick_markers)
-
-            if self.which == "both" and self.grouping == "together":
-                if self.mode == 0:
-                    self.CB.remove()
-                    self.cont.remove()
-                    self.cont = self.ax1.pcolormesh(self.x,self.y,self.field[i,:,:],shading='nearest',
-                                                    cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.field),vmax=np.max(self.field))
-                    self.CB = self.fig.colorbar(self.cont,ax=self.ax1,fraction=0.07,pad=0.0175)
-                    self.CB.ax.set_facecolor(self.ax_fc)
-                elif self.mode == 1:
-                    if self.p == 1:
-                        self.arrow.set_array(self.field[i,::self._slc_y,::self._slc_x].ravel())
-                    elif self.p == 2:
-                        self.point.set_array(self.field[i,::self._slc_y,::self._slc_x].ravel())
-                    else:
-                        self.patch.set_array(self.field[i,::self._slc_y,::self._slc_x].ravel())
-                elif self.mode == 2:
-                    self.CB.remove()
-                    self.cont.remove()
-                    self.cont = self.ax1.pcolormesh(self.x,self.y,self.field[i,:,:],shading='nearest',
-                                                    cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.field),vmax=np.max(self.field))
-                    self.CB = self.fig.colorbar(self.cont,ax=self.ax1,fraction=0.07,pad=0.0175)
-                    self.CB.ax.set_facecolor(self.ax_fc)
-                    if self.p == 1:
-                        self.arrow.set_array(self.field[i,::self._slc_y,::self._slc_x].ravel())
-                    elif self.p == 2:
-                        self.point.set_array(self.field[i,::self._slc_y,::self._slc_x].ravel())
-                    else:
-                        self.patch.set_array(self.field[i,::self._slc_y,::self._slc_x].ravel())
-            elif self.which == "both" and self.grouping == "separate":
+            if self.which == "pf":
                 self.CB.remove()
                 self.cont.remove()
                 self.cont = self.ax1.pcolormesh(self.x,self.y,self.field[i,:,:],shading='nearest',
                                                 cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.field),vmax=np.max(self.field))
                 self.CB = self.fig.colorbar(self.cont,ax=self.ax1,fraction=0.07,pad=0.0175)
                 self.CB.ax.set_facecolor(self.ax_fc)
+            else:
+                if self.p == 1:
+                    self.arrow.set_UVC(self._vx[i,::self._slc_y,::self._slc_x],self._vy[i,::self._slc_y,::self._slc_x])
+                elif self.p > 1:
+                    patch_markers = []
+                    point_markers = []
+                    tick_markers = []
+
+                    for j in range(0,len(self.field[i,:,:]),self._slc_y):
+                        for k in range(0,len(self.field[i,j,:]),self._slc_x):
+                            t = Affine2D().rotate_deg(self.field[i,j,k]-90)
+                            patch_markers.append(mpath.Path.unit_regular_polygon(self.p).transformed(t))
+                            point_markers.append(mpath.Path.unit_regular_asterisk(self.p).transformed(t))
+                            tick_markers.append(mpath.Path.unit_regular_asterisk(1).transformed(t))
+
+                    self._update_markers(patch_markers,point_markers,tick_markers)
+
+                if self.which == "both" and self.grouping == "together":
+                    if self.mode == 0:
+                        self.CB.remove()
+                        self.cont.remove()
+                        self.cont = self.ax1.pcolormesh(self.x,self.y,self.field[i,:,:],shading='nearest',
+                                                        cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.field),vmax=np.max(self.field))
+                        self.CB = self.fig.colorbar(self.cont,ax=self.ax1,fraction=0.07,pad=0.0175)
+                        self.CB.ax.set_facecolor(self.ax_fc)
+                    elif self.mode == 1:
+                        if self.p == 1:
+                            self.arrow.set_array(self.field[i,::self._slc_y,::self._slc_x].ravel())
+                        elif self.p == 2:
+                            self.point.set_array(self.field[i,::self._slc_y,::self._slc_x].ravel())
+                        else:
+                            self.patch.set_array(self.field[i,::self._slc_y,::self._slc_x].ravel())
+                    elif self.mode == 2:
+                        self.CB.remove()
+                        self.cont.remove()
+                        self.cont = self.ax1.pcolormesh(self.x,self.y,self.field[i,:,:],shading='nearest',
+                                                        cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.field),vmax=np.max(self.field))
+                        self.CB = self.fig.colorbar(self.cont,ax=self.ax1,fraction=0.07,pad=0.0175)
+                        self.CB.ax.set_facecolor(self.ax_fc)
+                        if self.p == 1:
+                            self.arrow.set_array(self.field[i,::self._slc_y,::self._slc_x].ravel())
+                        elif self.p == 2:
+                            self.point.set_array(self.field[i,::self._slc_y,::self._slc_x].ravel())
+                        else:
+                            self.patch.set_array(self.field[i,::self._slc_y,::self._slc_x].ravel())
+                elif self.which == "both" and self.grouping == "separate":
+                    self.CB.remove()
+                    self.cont.remove()
+                    self.cont = self.ax1.pcolormesh(self.x,self.y,self.field[i,:,:],shading='nearest',
+                                                    cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.field),vmax=np.max(self.field))
+                    self.CB = self.fig.colorbar(self.cont,ax=self.ax1,fraction=0.07,pad=0.0175)
+                    self.CB.ax.set_facecolor(self.ax_fc)
 
     def set_grid(self,c,which='both'):
         '''
@@ -1227,31 +1255,32 @@ class PAticAnimator:
             msg = """grouping must be one of """ + "'%s', "*(len(self._grouping_list)-1) + "and '%s'."
             raise ValueError(msg % self._grouping_list)
 
-        if self.which == "both":
-            if self.grouping != grouping.lower() and grouping.lower() == "separate":
-                self.ax1.remove()
-                self.fig.set_figwidth(24.0)
-                self.fig.set_figheight(10.0)
-                self.ax1 = self.fig.add_subplot(121,facecolor=self.ax_fc)
-                self.ax2 = self.fig.add_subplot(122,facecolor='whitesmoke')
-            elif self.grouping != grouping.lower() and grouping.lower() == "together":
-                self.ax1.remove()
-                self.ax2.remove()
-                self.fig.set_figwidth(12.0)
-                self.fig.set_figheight(10.0)
-                self.ax1 = self.fig.add_subplot(111,facecolor=self.ax_fc)
+        if not self.complex_field:
+            if self.which == "both":
+                if self.grouping != grouping.lower() and grouping.lower() == "separate":
+                    self.ax1.remove()
+                    self.fig.set_figwidth(24.0)
+                    self.fig.set_figheight(10.0)
+                    self.ax1 = self.fig.add_subplot(121,facecolor=self.ax_fc)
+                    self.ax2 = self.fig.add_subplot(122,facecolor='whitesmoke')
+                elif self.grouping != grouping.lower() and grouping.lower() == "together":
+                    self.ax1.remove()
+                    self.ax2.remove()
+                    self.fig.set_figwidth(12.0)
+                    self.fig.set_figheight(10.0)
+                    self.ax1 = self.fig.add_subplot(111,facecolor=self.ax_fc)
 
-            if grouping.lower() == "together" and (self.mode == 1 or self.mode == 2):
-                if self.p == 2:
-                    self.marker_type = "point"
-                else:
-                    self.marker_type = "patch"
-                    self.marker_transparencies["patch"] = 1.0
-                self.pf_transparency = 0.25
-            elif grouping.lower() == "separate":
-                self.marker_type = "all"
-                self.marker_transparencies["patch"] = 0.5
-                self.pf_transparency = 1.0
+                if grouping.lower() == "together" and (self.mode == 1 or self.mode == 2):
+                    if self.p == 2:
+                        self.marker_type = "point"
+                    else:
+                        self.marker_type = "patch"
+                        self.marker_transparencies["patch"] = 1.0
+                    self.pf_transparency = 0.25
+                elif grouping.lower() == "separate":
+                    self.marker_type = "all"
+                    self.marker_transparencies["patch"] = 0.5
+                    self.pf_transparency = 1.0
 
         self.grouping = grouping.lower()
 
