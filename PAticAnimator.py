@@ -486,9 +486,10 @@ class PAticAnimator:
 
         self.pf_transparency = 1.0
         self.colormap = "twilight"
+        self.ax_fc = 'whitesmoke'
 
         self.fig = plt.figure(figsize=(12.0,10.0))
-        self.ax1 = self.fig.add_subplot(111,facecolor='whitesmoke')
+        self.ax1 = self.fig.add_subplot(111,facecolor=self.ax_fc)
         self.ax2 = None
 
         self.marker_density_x = 0.1
@@ -677,6 +678,8 @@ class PAticAnimator:
         Calls on:
             - _set_marker
         '''
+        self.ax1.set_facecolor(self.ax_fc)
+
         if self.p == 1:
             self._vx = np.cos((self.phi/180)*np.pi)
             self._vy = np.sin((self.phi/180)*np.pi)
@@ -820,6 +823,7 @@ class PAticAnimator:
         self.ax1.set_ylim([self.y0,self.y1])
 
         self.CB = self.fig.colorbar(self.cont,ax=self.ax1,fraction=0.07,pad=0.0175)
+        self.CB.ax.set_facecolor(self.ax_fc)
 
         self.fig.tight_layout()
 
@@ -1009,6 +1013,7 @@ class PAticAnimator:
             self.cont = self.ax1.pcolormesh(self.x,self.y,self.phi[i,:,:],shading='nearest',
                                             cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.phi),vmax=np.max(self.phi))
             self.CB = self.fig.colorbar(self.cont,ax=self.ax1,fraction=0.07,pad=0.0175)
+            self.CB.ax.set_facecolor(self.ax_fc)
         else:
             if self.p == 1:
                 self.arrow.set_UVC(self._vx[i,::self._slc_y,::self._slc_x],self._vy[i,::self._slc_y,::self._slc_x])
@@ -1033,6 +1038,7 @@ class PAticAnimator:
                     self.cont = self.ax1.pcolormesh(self.x,self.y,self.phi[i,:,:],shading='nearest',
                                                     cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.phi),vmax=np.max(self.phi))
                     self.CB = self.fig.colorbar(self.cont,ax=self.ax1,fraction=0.07,pad=0.0175)
+                    self.CB.ax.set_facecolor(self.ax_fc)
                 elif self.mode == 1:
                     if self.p == 1:
                         self.arrow.set_array(self.phi[i,::self._slc_y,::self._slc_x].ravel())
@@ -1046,6 +1052,7 @@ class PAticAnimator:
                     self.cont = self.ax1.pcolormesh(self.x,self.y,self.phi[i,:,:],shading='nearest',
                                                     cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.phi),vmax=np.max(self.phi))
                     self.CB = self.fig.colorbar(self.cont,ax=self.ax1,fraction=0.07,pad=0.0175)
+                    self.CB.ax.set_facecolor(self.ax_fc)
                     if self.p == 1:
                         self.arrow.set_array(self.phi[i,::self._slc_y,::self._slc_x].ravel())
                     elif self.p == 2:
@@ -1058,6 +1065,7 @@ class PAticAnimator:
                 self.cont = self.ax1.pcolormesh(self.x,self.y,self.phi[i,:,:],shading='nearest',
                                                 cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.phi),vmax=np.max(self.phi))
                 self.CB = self.fig.colorbar(self.cont,ax=self.ax1,fraction=0.07,pad=0.0175)
+                self.CB.ax.set_facecolor(self.ax_fc)
 
     def set_grid(self,c,which='both'):
         '''
@@ -1215,14 +1223,14 @@ class PAticAnimator:
                 self.ax1.remove()
                 self.fig.set_figwidth(24.0)
                 self.fig.set_figheight(10.0)
-                self.ax1 = self.fig.add_subplot(121,facecolor='whitesmoke')
+                self.ax1 = self.fig.add_subplot(121,facecolor=self.ax_fc)
                 self.ax2 = self.fig.add_subplot(122,facecolor='whitesmoke')
             elif self.grouping != grouping.lower() and grouping.lower() == "together":
                 self.ax1.remove()
                 self.ax2.remove()
                 self.fig.set_figwidth(12.0)
                 self.fig.set_figheight(10.0)
-                self.ax1 = self.fig.add_subplot(111,facecolor='whitesmoke')
+                self.ax1 = self.fig.add_subplot(111,facecolor=self.ax_fc)
 
             if grouping.lower() == "together" and (self.mode == 1 or self.mode == 2):
                 if self.p == 2:
@@ -1488,6 +1496,12 @@ class PAticAnimator:
             self.marker_transparencies[which] = 0
         else:
             self.marker_transparencies[which] = alpha
+
+    def set_axes_facecolor(self,color):
+        if not isinstance(color,str):
+            raise TypeError("""The color keyword argument must be of type <class 'str'>.""")
+
+        self.ax_fc = color
 
     def set_colormap(self,colormap):
         '''
