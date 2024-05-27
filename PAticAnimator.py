@@ -685,19 +685,19 @@ class PAticAnimator:
             - _set_marker
         '''
         self.ax1.set_facecolor(self.ax_fc)
+        self.SM = ScalarMappable(cmap=self.colormap)
 
         if self.complex_field:
             self.thetas = np.angle(self.field)/self.p
             self.rs = np.abs(self.field)
             self.rs_norm = (self.rs - np.min(self.rs))/(np.max(self.rs) - np.min(self.rs))
 
-            self.SM = ScalarMappable(cmap=self.colormap)
             self.SM.set_clim([np.min(self.thetas),np.max(self.thetas)])
 
             self.RGBA = self.SM.to_rgba(self.thetas[0,:,:])
             self.RGBA[:,:,-1] = self.rs_norm[0,:,:]
 
-            self.cont = self.ax1.pcolormesh(self.x,self.y,self.RGBA,shading='nearest',cmap=self.colormap,vmin=np.min(self.thetas),vmax=np.max(self.thetas))
+            self.cont = self.ax1.pcolormesh(self.x,self.y,self.RGBA,shading='nearest',cmap=self.colormap,vmin=np.min(self.thetas),vmax=np.max(self.thetas),zorder=0)
             self.CB = self.fig.colorbar(self.SM,ax=self.ax1,fraction=0.07,pad=0.0175,ticks=np.linspace(np.min(self.thetas),np.max(self.thetas),9))
             self.CB.ax.set_facecolor(self.ax_fc)
 
@@ -738,11 +738,11 @@ class PAticAnimator:
 
             if self.which == "both" and self.grouping == "separate":
                 self.cont = self.ax1.pcolormesh(self.x,self.y,self.field[0,:,:],shading='nearest',
-                                                cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.field),vmax=np.max(self.field))
+                                                cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.field),vmax=np.max(self.field),zorder=0)
                 if self.p == 1:
                     self.arrow = self.ax2.quiver(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],self._vx[0,::self._slc_y,::self._slc_x],self._vy[0,::self._slc_y,::self._slc_x],
                                                  color='k',
-                                                 pivot='tail',
+                                                 pivot='mid',
                                                  width=0.0025,headwidth=2.5,headlength=5,headaxislength=4.5,
                                                  scale_units='xy',scale=None,zorder=1)
                 else:
@@ -775,7 +775,7 @@ class PAticAnimator:
             else:
                 if self.which == "pf":
                     self.cont = self.ax1.pcolormesh(self.x,self.y,self.field[0,:,:],shading='nearest',
-                                                    cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.field),vmax=np.max(self.field))
+                                                    cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.field),vmax=np.max(self.field),zorder=0)
                 elif self.which == "op":
                     self.fig.set_figheight(10.0)
                     self.fig.set_figwidth(10.0)
@@ -783,7 +783,7 @@ class PAticAnimator:
                     if self.p == 1:
                         self.arrow = self.ax1.quiver(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],self._vx[0,::self._slc_y,::self._slc_x],self._vy[0,::self._slc_y,::self._slc_x],
                                                      color='k',
-                                                     pivot='tail',
+                                                     pivot='mid',
                                                      width=0.0025,headwidth=2.5,headlength=5,headaxislength=4.5,
                                                      scale_units='xy',scale=None,zorder=1)
                     else:
@@ -812,11 +812,11 @@ class PAticAnimator:
                 elif self.which == "both":
                     if self.mode == 0:
                         self.cont = self.ax1.pcolormesh(self.x,self.y,self.field[0,:,:],shading='nearest',
-                                                        cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.field),vmax=np.max(self.field))
+                                                        cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.field),vmax=np.max(self.field),zorder=0)
                         if self.p == 1:
                             self.arrow = self.ax1.quiver(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],self._vx[0,::self._slc_y,::self._slc_x],self._vy[0,::self._slc_y,::self._slc_x],
                                                          color='k',
-                                                         pivot='tail',
+                                                         pivot='mid',
                                                          width=0.0025,headwidth=2.5,headlength=5,headaxislength=4.5,
                                                          scale_units='xy',scale=None,zorder=1)
                         else:
@@ -826,7 +826,7 @@ class PAticAnimator:
                         if self.p == 1:
                             self.arrow = self.ax1.quiver(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],self._vx[0,::self._slc_y,::self._slc_x],self._vy[0,::self._slc_y,::self._slc_x],self.field[0,::self._slc_y,::self._slc_x],
                                                          cmap=self.colormap,
-                                                         pivot='tail',
+                                                         pivot='mid',
                                                          width=0.0025,headwidth=2.5,headlength=5,headaxislength=4.5,
                                                          scale_units='xy',scale=None,zorder=1)
                         elif self.p == 2:
@@ -836,11 +836,11 @@ class PAticAnimator:
                         patch_kwarg = {"c":self.field[0,::self._slc_y,::self._slc_x],"cmap":self.colormap,"vmin":np.min(self.field[0,:,:]),"vmax":np.max(self.field[0,:,:])}
                     elif self.mode == 2:
                         self.cont = self.ax1.pcolormesh(self.x,self.y,self.field[0,:,:],shading='nearest',
-                                                        cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.field),vmax=np.max(self.field))
+                                                        cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.field),vmax=np.max(self.field),zorder=0)
                         if self.p == 1:
                             self.arrow = self.ax1.quiver(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],self._vx[0,::self._slc_y,::self._slc_x],self._vy[0,::self._slc_y,::self._slc_x],self.field[0,::self._slc_y,::self._slc_x],
                                                          cmap=self.colormap,
-                                                         pivot='tail',
+                                                         pivot='mid',
                                                          width=0.0025,headwidth=2.5,headlength=5,headaxislength=4.5,
                                                          scale_units='xy',scale=None,zorder=1)
                         elif self.p == 2:
@@ -878,8 +878,14 @@ class PAticAnimator:
             self.ax1.set_ylim([self.y0,self.y1])
 
             if self.which != 'op':
-                self.CB = self.fig.colorbar(self.cont,ax=self.ax1,fraction=0.07,pad=0.0175)
-                self.CB.ax.set_facecolor(self.ax_fc)
+                if self.p == 1 and self.grouping == 'together' and self.mode == 1:
+                    self.SM.set_clim([np.min(self.field),np.max(self.field)])
+                    self.CB = self.fig.colorbar(self.SM,ax=self.ax1,fraction=0.07,pad=0.0175,ticks=np.linspace(np.min(self.field),np.max(self.field),9))
+                    self.CB.ax.set_facecolor(self.ax_fc)
+                else:
+                    self.cont.set_clim([np.min(self.field),np.max(self.field)])
+                    self.CB = self.fig.colorbar(self.cont,ax=self.ax1,fraction=0.07,pad=0.0175,ticks=np.linspace(np.min(self.field),np.max(self.field),9))
+                    self.CB.ax.set_facecolor(self.ax_fc)
 
         self.fig.tight_layout()
 
@@ -1073,7 +1079,7 @@ class PAticAnimator:
             self.RGBA = self.SM.to_rgba(self.thetas[i,:,:])
             self.RGBA[:,:,-1] = self.rs_norm[i,:,:]
 
-            self.cont = self.ax1.pcolormesh(self.x,self.y,self.RGBA,shading='nearest',cmap=self.colormap,vmin=np.min(self.thetas),vmax=np.max(self.thetas))
+            self.cont = self.ax1.pcolormesh(self.x,self.y,self.RGBA,shading='nearest',cmap=self.colormap,vmin=np.min(self.thetas),vmax=np.max(self.thetas),zorder=0)
             self.CB = self.fig.colorbar(self.SM,ax=self.ax1,fraction=0.07,pad=0.0175,ticks=np.linspace(np.min(self.thetas),np.max(self.thetas),9))
             self.CB.ax.set_facecolor(self.ax_fc)
 
@@ -1112,8 +1118,9 @@ class PAticAnimator:
                 self.CB.remove()
                 self.cont.remove()
                 self.cont = self.ax1.pcolormesh(self.x,self.y,self.field[i,:,:],shading='nearest',
-                                                cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.field),vmax=np.max(self.field))
-                self.CB = self.fig.colorbar(self.cont,ax=self.ax1,fraction=0.07,pad=0.0175)
+                                                cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.field),vmax=np.max(self.field),zorder=0)
+                self.cont.set_clim([np.min(self.field),np.max(self.field)])
+                self.CB = self.fig.colorbar(self.cont,ax=self.ax1,fraction=0.07,pad=0.0175,ticks=np.linspace(np.min(self.field),np.max(self.field),9))
                 self.CB.ax.set_facecolor(self.ax_fc)
             else:
                 if self.p == 1:
@@ -1137,8 +1144,9 @@ class PAticAnimator:
                         self.CB.remove()
                         self.cont.remove()
                         self.cont = self.ax1.pcolormesh(self.x,self.y,self.field[i,:,:],shading='nearest',
-                                                        cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.field),vmax=np.max(self.field))
-                        self.CB = self.fig.colorbar(self.cont,ax=self.ax1,fraction=0.07,pad=0.0175)
+                                                        cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.field),vmax=np.max(self.field),zorder=0)
+                        self.cont.set_clim([np.min(self.field),np.max(self.field)])
+                        self.CB = self.fig.colorbar(self.cont,ax=self.ax1,fraction=0.07,pad=0.0175,ticks=np.linspace(np.min(self.field),np.max(self.field),9))
                         self.CB.ax.set_facecolor(self.ax_fc)
                     elif self.mode == 1:
                         if self.p == 1:
@@ -1151,8 +1159,9 @@ class PAticAnimator:
                         self.CB.remove()
                         self.cont.remove()
                         self.cont = self.ax1.pcolormesh(self.x,self.y,self.field[i,:,:],shading='nearest',
-                                                        cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.field),vmax=np.max(self.field))
-                        self.CB = self.fig.colorbar(self.cont,ax=self.ax1,fraction=0.07,pad=0.0175)
+                                                        cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.field),vmax=np.max(self.field),zorder=0)
+                        self.cont.set_clim([np.min(self.field),np.max(self.field)])
+                        self.CB = self.fig.colorbar(self.cont,ax=self.ax1,fraction=0.07,pad=0.0175,ticks=np.linspace(np.min(self.field),np.max(self.field),9))
                         self.CB.ax.set_facecolor(self.ax_fc)
                         if self.p == 1:
                             self.arrow.set_array(self.field[i,::self._slc_y,::self._slc_x].ravel())
@@ -1164,8 +1173,9 @@ class PAticAnimator:
                     self.CB.remove()
                     self.cont.remove()
                     self.cont = self.ax1.pcolormesh(self.x,self.y,self.field[i,:,:],shading='nearest',
-                                                    cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.field),vmax=np.max(self.field))
-                    self.CB = self.fig.colorbar(self.cont,ax=self.ax1,fraction=0.07,pad=0.0175)
+                                                    cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.field),vmax=np.max(self.field),zorder=0)
+                    self.cont.set_clim([np.min(self.field),np.max(self.field)])
+                    self.CB = self.fig.colorbar(self.cont,ax=self.ax1,fraction=0.07,pad=0.0175,ticks=np.linspace(np.min(self.field),np.max(self.field),9))
                     self.CB.ax.set_facecolor(self.ax_fc)
 
     def set_grid(self,c,which='both'):
