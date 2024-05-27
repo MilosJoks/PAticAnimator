@@ -1615,6 +1615,8 @@ class PAticAnimator:
                 The colormap can be given as a string with the name of any of the standard
                 Matplotlib colormaps, or as a Matplotlib colormap object.
         '''
+        # add checks for colormap
+        
         self.colormap = colormap
 
     def set_pf_transparency(self,alpha):
