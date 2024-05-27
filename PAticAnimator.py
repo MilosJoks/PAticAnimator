@@ -425,12 +425,13 @@ class PAticAnimator:
                     Sets the output file type for the animation.
     '''
 
+    _field_types = ("complex","magnitude","phase")
     _marker_types = ("patch","point","tick","patch & point","patch & tick","point & tick","all")
-    _which_list = ["pf","op","both"]
-    _grouping_list = ["separate","together"]
-    _mode_list = [0,1,2]
+    _which_list = ("pf","op","both")
+    _grouping_list = ("separate","together")
+    _mode_list = (0,1,2)
 
-    def __init__(self,p,field=None,x=None,y=None):
+    def __init__(self,p,field=None,x=None,y=None,field_type=None):
         '''
         Initializes an instance of the PaticAnimator class based on the supplied parameters.
 
@@ -473,6 +474,13 @@ class PAticAnimator:
             raise ValueError("""p must be greater than or qual to 1.""")
         else:
             self.p = p
+
+        if field_type is not None and field_type.lower() not in self._field_types:
+            raise ValueError("""The field_type keyword argument must be one of 'complex', 'magnitude' or 'phase'.""")
+        elif field_type is not None:
+            self.field_type = field_type.lower()
+        else:
+            self.field_type = None
 
         self.which = "pf"
         self.grouping = "together"
@@ -589,9 +597,7 @@ class PAticAnimator:
             raise Exception("""field must be a three-dimensional array with shape (nt,ny,nx).""")
 
         if field.dtype == np.complex_:
-            self.complex_field = True
-        else:
-            self.complex_field = False
+            self.field_type = 'complex'
 
     def _check_coordinate(self,c):
         '''
@@ -687,7 +693,7 @@ class PAticAnimator:
         self.ax1.set_facecolor(self.ax_fc)
         self.SM = ScalarMappable(cmap=self.colormap)
 
-        if self.complex_field:
+        if self.field_type == 'complex':
             self.thetas = np.angle(self.field)/self.p
             self.rs = np.abs(self.field)
             self.rs_norm = (self.rs - np.min(self.rs))/(np.max(self.rs) - np.min(self.rs))
@@ -703,7 +709,7 @@ class PAticAnimator:
 
             tick_labels = []
             for i in range(9):
-                n = np.abs(8 - 2*i)
+                n = np.abs(4 - i)
                 d = 4*self.p
 
                 nr = n/np.gcd(n,d)
@@ -878,14 +884,45 @@ class PAticAnimator:
             self.ax1.set_ylim([self.y0,self.y1])
 
             if self.which != 'op':
-                if self.p == 1 and self.grouping == 'together' and self.mode == 1:
+                if self.grouping == 'together' and self.mode == 1:
                     self.SM.set_clim([np.min(self.field),np.max(self.field)])
                     self.CB = self.fig.colorbar(self.SM,ax=self.ax1,fraction=0.07,pad=0.0175,ticks=np.linspace(np.min(self.field),np.max(self.field),9))
-                    self.CB.ax.set_facecolor(self.ax_fc)
                 else:
                     self.cont.set_clim([np.min(self.field),np.max(self.field)])
                     self.CB = self.fig.colorbar(self.cont,ax=self.ax1,fraction=0.07,pad=0.0175,ticks=np.linspace(np.min(self.field),np.max(self.field),9))
-                    self.CB.ax.set_facecolor(self.ax_fc)
+                self.CB.ax.set_facecolor(self.ax_fc)
+
+                if self.field_type == 'phase':
+                    tick_labels = []
+                    for i in range(9):
+                        n = np.abs(4 - i)
+                        d = 4*self.p
+
+                        nr = n/np.gcd(n,d)
+                        dr = d/np.gcd(n,d)
+
+                        if i < 4:
+                            if nr == 1 and dr == 1:
+                                label = r'$-\pi$'
+                            elif nr == 1:
+                                label = r'$-\frac{\pi}{%d}$' % dr
+                            elif dr == 1:
+                                label = r'$-%d\pi$' % nr
+                            else:
+                                label = r'$-\frac{%d\pi}{%d}$' % (nr,dr)
+                        elif i == 4:
+                            label = r'$0$'
+                        else:
+                            if nr == 1 and dr == 1:
+                                label = r'$\pi$'
+                            elif nr == 1:
+                                label = r'$\frac{\pi}{%d}$' % dr
+                            elif dr == 1:
+                                label = r'$%d\pi$' % nr
+                            else:
+                                label = r'$\frac{%d\pi}{%d}$' % (nr,dr)
+                        tick_labels.append(label)
+                    self.CB.set_ticklabels(tick_labels)
 
         self.fig.tight_layout()
 
@@ -1069,7 +1106,7 @@ class PAticAnimator:
         Calls on:
             - _update_markers
         '''
-        if self.complex_field:
+        if self.field_type == 'complex':
             self.CB.remove()
             self.cont.remove()
 
@@ -1085,7 +1122,7 @@ class PAticAnimator:
 
             tick_labels = []
             for i in range(9):
-                n = np.abs(8 - 2*i)
+                n = np.abs(4 - i)
                 d = 4*self.p
 
                 nr = n/np.gcd(n,d)
@@ -1177,6 +1214,38 @@ class PAticAnimator:
                     self.cont.set_clim([np.min(self.field),np.max(self.field)])
                     self.CB = self.fig.colorbar(self.cont,ax=self.ax1,fraction=0.07,pad=0.0175,ticks=np.linspace(np.min(self.field),np.max(self.field),9))
                     self.CB.ax.set_facecolor(self.ax_fc)
+
+            if self.field_type == 'phase':
+                tick_labels = []
+                for i in range(9):
+                    n = np.abs(4 - i)
+                    d = 4*self.p
+
+                    nr = n/np.gcd(n,d)
+                    dr = d/np.gcd(n,d)
+
+                    if i < 4:
+                        if nr == 1 and dr == 1:
+                            label = r'$-\pi$'
+                        elif nr == 1:
+                            label = r'$-\frac{\pi}{%d}$' % dr
+                        elif dr == 1:
+                            label = r'$-%d\pi$' % nr
+                        else:
+                            label = r'$-\frac{%d\pi}{%d}$' % (nr,dr)
+                    elif i == 4:
+                        label = r'$0$'
+                    else:
+                        if nr == 1 and dr == 1:
+                            label = r'$\pi$'
+                        elif nr == 1:
+                            label = r'$\frac{\pi}{%d}$' % dr
+                        elif dr == 1:
+                            label = r'$%d\pi$' % nr
+                        else:
+                            label = r'$\frac{%d\pi}{%d}$' % (nr,dr)
+                    tick_labels.append(label)
+                self.CB.set_ticklabels(tick_labels)
 
     def set_grid(self,c,which='both'):
         '''
@@ -1329,7 +1398,7 @@ class PAticAnimator:
             msg = """grouping must be one of """ + "'%s', "*(len(self._grouping_list)-1) + "and '%s'."
             raise ValueError(msg % self._grouping_list)
 
-        if not self.complex_field:
+        if self.field_type != 'complex':
             if self.which == "both":
                 if self.grouping != grouping.lower() and grouping.lower() == "separate":
                     self.ax1.remove()
