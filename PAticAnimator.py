@@ -9,6 +9,7 @@ from matplotlib.cm import ScalarMappable
 
 import os
 import shutil
+import imageio
 import imageio.v3 as iio
 
 import datetime
@@ -1773,6 +1774,13 @@ class PAticAnimator:
         for i in range(self.nt):
             ims.append(iio.imread('./' + folder_name + '/frame_%d.png' % i))
         frames = np.stack(ims,axis=0)
-        iio.imwrite('PAA_%s.%s' % (datetime.datetime.now().strftime('%y%m%d_%H%M%S'),ext.lower()),frames)
+
+        dim = (int(self.fig.get_figwidth()*self.fig.get_dpi()),int(self.fig.get_figheight()*self.fig.get_dpi()))
+
+        gen = imageio.plugins.ffmpeg.imageio_ffmpeg.write_frames('PAA_%s.%s' % (datetime.datetime.now().strftime('%y%m%d_%H%M%S'),ext.lower()),dim,fps=60,pix_fmt_in='rgba')
+        gen.send(None)
+        for frame in frames:
+            gen.send(frame)
+        gen.close()
 
         shutil.rmtree('./' + folder_name)
