@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import matplotlib.path as mpath
 import matplotlib.markers as mmarkers
 import matplotlib.gridspec as mgs
+import matplotlib.patches as mpatches
 
 from matplotlib.transforms import Affine2D
 from matplotlib.cm import ScalarMappable
@@ -14,7 +15,7 @@ import imageio.v3 as iio
 
 import datetime
 
-class PAticAnimator:
+class PAticAnimator(object):
     '''
     Class for animating the time evolution of the order parameter phase field.
 
@@ -432,7 +433,7 @@ class PAticAnimator:
     _grouping_list = ("separate","together")
     _mode_list = (0,1,2)
 
-    def __init__(self,p,field=None,x=None,y=None,field_type=None):
+    def __init__(self,p,field=None,x=None,y=None,ts=None,field_type='complex',director=False,timestamp=False):
         '''
         Initializes an instance of the PaticAnimator class based on the supplied parameters.
 
@@ -483,6 +484,15 @@ class PAticAnimator:
         else:
             self.field_type = None
 
+        if not isinstance(director,bool):
+            raise TypeError("""The director keyword argument must be a boolean.""")
+        else:
+            self.director = director
+        if not isinstance(timestamp,bool):
+            raise TypeError("""The timestamp keyword argument must be a boolean.""")
+        else:
+            self.timestamp = timestamp
+
         self.which = "pf"
         self.grouping = "together"
         self.mode = 0
@@ -496,9 +506,16 @@ class PAticAnimator:
 
         self.pf_transparency = 1.0
         self.colormap = "twilight"
-        self.ax_fc = 'whitesmoke'
+        self.ax_fc = "whitesmoke"
+        self.CB_label_fontsize = 22
+        self.CB_tick_fontsize = 20
+        
+        self.ts_fontsize = 20
+        self.ts_color = '#f4f4f4'
+        self.ts_bbox_facecolor = 'k'
+        self.ts_bbox_alpha = 0.5
 
-        self.fig = plt.figure(figsize=(12.0,10.0))
+        self.fig = plt.figure(figsize=(12.0,10.0),frameon=False,dpi=300)
         self.ax1 = self.fig.add_subplot(111,facecolor=self.ax_fc)
         self.ax2 = None
 
@@ -507,6 +524,8 @@ class PAticAnimator:
 
         self._slc_x = 1
         self._slc_y = 1
+
+        self.ts = ts
 
         if field is None:
             self.field = None
@@ -597,8 +616,8 @@ class PAticAnimator:
         elif isinstance(field,np.ndarray) and len(field.shape) != 3:
             raise Exception("""field must be a three-dimensional array with shape (nt,ny,nx).""")
 
-        if field.dtype == np.complex_:
-            self.field_type = 'complex'
+        # if field.dtype == np.complex_:
+        #     self.field_type = 'complex'
 
     def _check_coordinate(self,c):
         '''
@@ -657,7 +676,7 @@ class PAticAnimator:
             self.y0 = np.min(c)
             self.y1 = np.max(c)
 
-            self.x, self.y = np.meshgrid(np.linspace(self.x0,self.x1,self.nx),np.linspace(self.y0,self.y1,self.ny))
+            self.x,self.y = np.meshgrid(np.linspace(self.x0,self.x1,self.nx),np.linspace(self.y0,self.y1,self.ny))
 
     def _set_default_grid(self):
         '''
@@ -677,7 +696,7 @@ class PAticAnimator:
         self.y0 = 0
         self.y1 = 1
 
-        self.x, self.y = np.meshgrid(np.linspace(self.x0,self.x1,self.nx),np.linspace(self.y0,self.y1,self.ny))
+        self.x,self.y = np.meshgrid(np.linspace(self.x0,self.x1,self.nx),np.linspace(self.y0,self.y1,self.ny))
 
     def _initialize_plot(self):
         '''
@@ -694,29 +713,19 @@ class PAticAnimator:
         self.ax1.set_facecolor(self.ax_fc)
         self.SM = ScalarMappable(cmap=self.colormap)
 
-        if self.field_type == 'complex':
-            self.thetas = np.angle(self.field)/self.p
+        if not self.director:
             self.rs = np.abs(self.field)
-            self.rs_norm = (self.rs - np.min(self.rs))/(np.max(self.rs) - np.min(self.rs))
-
-            self.SM.set_clim([np.min(self.thetas),np.max(self.thetas)])
-
-            self.RGBA = self.SM.to_rgba(self.thetas[0,:,:])
-            self.RGBA[:,:,-1] = self.rs_norm[0,:,:]
-
-            self.cont = self.ax1.pcolormesh(self.x,self.y,self.RGBA,shading='nearest',cmap=self.colormap,vmin=np.min(self.thetas),vmax=np.max(self.thetas),zorder=0)
-            self.CB = self.fig.colorbar(self.SM,ax=self.ax1,fraction=0.07,pad=0.0175,ticks=np.linspace(np.min(self.thetas),np.max(self.thetas),9))
-            self.CB.ax.set_facecolor(self.ax_fc)
+            self.thetas = np.angle(self.field)
 
             tick_labels = []
-            for i in range(9):
-                n = np.abs(4 - i)
-                d = 4*self.p
+            for m in range(9):
+                n = np.abs(4-m)
+                d = 4
 
                 nr = n/np.gcd(n,d)
                 dr = d/np.gcd(n,d)
 
-                if i < 4:
+                if m < 4:
                     if nr == 1 and dr == 1:
                         label = r'$-\pi$'
                     elif nr == 1:
@@ -725,7 +734,7 @@ class PAticAnimator:
                         label = r'$-%d\pi$' % nr
                     else:
                         label = r'$-\frac{%d\pi}{%d}$' % (nr,dr)
-                elif i == 4:
+                elif m == 4:
                     label = r'$0$'
                 else:
                     if nr == 1 and dr == 1:
@@ -737,11 +746,119 @@ class PAticAnimator:
                     else:
                         label = r'$\frac{%d\pi}{%d}$' % (nr,dr)
                 tick_labels.append(label)
-            self.CB.set_ticklabels(tick_labels)
+
+            if self.field_type == 'complex':
+                self.rs_norm = (self.rs - np.min(self.rs))/(np.max(self.rs) - np.min(self.rs))
+
+                self.SM.set_clim([np.min(self.thetas),np.max(self.thetas)])
+                self.RGBA = self.SM.to_rgba(self.thetas[0,:,:])
+
+                if self.which == 'pf':
+                    self.RGBA[:,:,-1] = self.rs_norm[0,:,:]
+                    self.cont = self.ax1.pcolormesh(self.x,self.y,self.RGBA,shading='nearest',cmap=self.colormap,vmin=np.min(self.thetas),vmax=np.max(self.thetas),zorder=0)
+                elif self.which == 'op':
+                    self._vx = self.rs[0,:,:]*np.cos(self.thetas[0,:,:])
+                    self._vy = self.rs[0,:,:]*np.sin(self.thetas[0,:,:])
+
+                    self.arrow = self.ax1.quiver(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],self._vx[::self._slc_y,::self._slc_x],self._vy[::self._slc_y,::self._slc_x],
+                                                 color='k',
+                                                 pivot='mid',
+                                                 width=0.0025,headwidth=2.5,headlength=5,headaxislength=4.5,
+                                                 scale_units='xy',angles='xy',scale=(1/(2*np.log10(np.abs(self.x1-self.x0)))),zorder=1)
+                elif self.which == 'both':
+                    self.RGBA[:,:,-1] = self.pf_transparency
+
+                    self._vx = self.rs[0,:,:]*np.cos(self.thetas[0,:,:])
+                    self._vy = self.rs[0,:,:]*np.sin(self.thetas[0,:,:])
+
+                    if self.mode == 0:
+                        self.cont = self.ax1.pcolormesh(self.x,self.y,self.RGBA,shading='nearest',cmap=self.colormap,vmin=np.min(self.thetas),vmax=np.max(self.thetas),zorder=0)
+                        self.arrow = self.ax1.quiver(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],self._vx[::self._slc_y,::self._slc_x],self._vy[::self._slc_y,::self._slc_x],
+                                                     color='k',
+                                                     pivot='mid',
+                                                     width=0.0025,headwidth=2.5,headlength=5,headaxislength=4.5,
+                                                     scale_units='xy',angles='xy',scale=(1/(2*np.log10(np.abs(self.x1-self.x0)))),zorder=1)
+                    elif self.mode == 1:
+                        self.arrow = self.ax1.quiver(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],self._vx[::self._slc_y,::self._slc_x],self._vy[::self._slc_y,::self._slc_x],self.thetas[0,::self._slc_y,::self._slc_x],
+                                                     cmap=self.colormap,
+                                                     pivot='mid',
+                                                     width=0.0025,headwidth=2.5,headlength=5,headaxislength=4.5,
+                                                     scale_units='xy',angles='xy',scale=(1/(2*np.log10(np.abs(self.x1-self.x0)))),zorder=1)
+                    elif self.mode == 2:
+                        self.cont = self.ax1.pcolormesh(self.x,self.y,self.RGBA,shading='nearest',cmap=self.colormap,vmin=np.min(self.thetas),vmax=np.max(self.thetas),zorder=0)
+                        self.arrow = self.ax1.quiver(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],self._vx[::self._slc_y,::self._slc_x],self._vy[::self._slc_y,::self._slc_x],self.thetas[0,::self._slc_y,::self._slc_x],
+                                                     cmap=self.colormap,
+                                                     pivot='mid',
+                                                     width=0.0025,headwidth=2.5,headlength=5,headaxislength=4.5,
+                                                     scale_units='xy',angles='xy',scale=(1/(2*np.log10(np.abs(self.x1-self.x0)))),zorder=1)
+                if self.which != 'op':
+                    self.CB = self.fig.colorbar(self.SM,ax=self.ax1,fraction=0.07,pad=0.0175,ticks=np.linspace(np.min(self.thetas),np.max(self.thetas),9))
+                    self.CB.set_label(r'$\text{arg}\left(\Psi_p\right)$',rotation='vertical',fontsize=self.CB_label_fontsize)
+                    self.CB.ax.tick_params(labelsize=self.CB_tick_fontsize)
+                    self.CB.ax.set_facecolor(self.ax_fc)
+                    self.CB.set_ticklabels(tick_labels)
+            elif self.field_type == 'phase':
+                self.SM.set_clim([np.min(self.thetas),np.max(self.thetas)])
+                self.RGBA = self.SM.to_rgba(self.thetas[0,:,:])
+
+                self._vx = np.cos(self.thetas[0,:,:])
+                self._vy = np.sin(self.thetas[0,:,:])
+
+                if self.which == 'pf':
+                    self.cont = self.ax1.pcolormesh(self.x,self.y,self.RGBA,shading='nearest',cmap=self.colormap,vmin=np.min(self.thetas),vmax=np.max(self.thetas),zorder=0)
+                elif self.which == 'op':
+                    self.arrow = self.ax1.quiver(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],self._vx[::self._slc_y,::self._slc_x],self._vy[::self._slc_y,::self._slc_x],
+                                                 color='k',
+                                                 pivot='mid',
+                                                 width=0.0025,headwidth=2.5,headlength=5,headaxislength=4.5,
+                                                 scale_units='xy',angles='xy',scale=(1/(2*np.log10(np.abs(self.x1-self.x0)))),zorder=1)
+                elif self.which == 'both':
+                    if self.mode == 0:
+                        self.cont = self.ax1.pcolormesh(self.x,self.y,self.RGBA,shading='nearest',cmap=self.colormap,vmin=np.min(self.thetas),vmax=np.max(self.thetas),zorder=0)
+                        self.arrow = self.ax1.quiver(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],self._vx[::self._slc_y,::self._slc_x],self._vy[::self._slc_y,::self._slc_x],
+                                                     color='k',
+                                                     pivot='mid',
+                                                     width=0.0025,headwidth=2.5,headlength=5,headaxislength=4.5,
+                                                     scale_units='xy',angles='xy',scale=(1/(2*np.log10(np.abs(self.x1-self.x0)))),zorder=1)
+                    elif self.mode == 1:
+                        self.arrow = self.ax1.quiver(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],self._vx[::self._slc_y,::self._slc_x],self._vy[::self._slc_y,::self._slc_x],self.thetas[0,::self._slc_y,::self._slc_x],
+                                                     cmap=self.colormap,
+                                                     pivot='mid',
+                                                     width=0.0025,headwidth=2.5,headlength=5,headaxislength=4.5,
+                                                     scale_units='xy',angles='xy',scale=(1/(2*np.log10(np.abs(self.x1-self.x0)))),zorder=1)
+                    elif self.mode == 2:
+                        self.cont = self.ax1.pcolormesh(self.x,self.y,self.RGBA,shading='nearest',cmap=self.colormap,vmin=np.min(self.thetas),vmax=np.max(self.thetas),zorder=0)
+                        self.arrow = self.ax1.quiver(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],self._vx[::self._slc_y,::self._slc_x],self._vy[::self._slc_y,::self._slc_x],self.thetas[0,::self._slc_y,::self._slc_x],
+                                                     cmap=self.colormap,
+                                                     pivot='mid',
+                                                     width=0.0025,headwidth=2.5,headlength=5,headaxislength=4.5,
+                                                     scale_units='xy',angles='xy',scale=(1/(2*np.log10(np.abs(self.x1-self.x0)))),zorder=1)
+                if self.which != 'op':
+                    self.CB = self.fig.colorbar(self.SM,ax=self.ax1,fraction=0.07,pad=0.0175,ticks=np.linspace(np.min(self.thetas),np.max(self.thetas),9))
+                    self.CB.set_label(r'$\text{arg}\left(\Psi_p\right)$',rotation='vertical',fontsize=self.CB_label_fontsize)
+                    self.CB.ax.tick_params(labelsize=self.CB_tick_fontsize)
+                    self.CB.ax.set_facecolor(self.ax_fc)
+                    self.CB.set_ticklabels(tick_labels)
+            elif self.field_type == 'magnitude':
+                self.SM.set_clim([0,1])
+                self.RGBA = self.SM.to_rgba(self.rs[0,:,:])
+
+                self.cont = self.ax1.pcolormesh(self.x,self.y,self.RGBA,shading='nearest',cmap=self.colormap,vmin=np.min(self.rs),vmax=np.max(self.rs),zorder=0)
+                self.CB = self.fig.colorbar(self.SM,ax=self.ax1,fraction=0.07,pad=0.0175,ticks=np.linspace(np.min(self.rs),np.max(self.rs),9))
+                self.CB.set_label(r'$\left|\Psi_p\right|\,\left[\left|\Psi_0\right|\right]$',rotation='vertical',fontsize=self.CB_label_fontsize)
+                self.CB.ax.tick_params(labelsize=self.CB_tick_fontsize)
+                self.CB.ax.set_facecolor(self.ax_fc)
+
+                ticks = np.linspace(0,1,9)
+                tick_labels = [str(tick) for tick in ticks]
+                self.CB.set_ticklabels(tick_labels)
+            self.ax1.set_xlim([self.x0,self.x1])
+            self.ax1.set_ylim([self.y0,self.y1])
         else:
+            self.field = np.angle(self.field)/self.p
             if self.p == 1:
-                self._vx = np.cos((self.field/180)*np.pi)
-                self._vy = np.sin((self.field/180)*np.pi)
+                self._vx = np.cos(self.field)
+                self._vy = np.sin(self.field)
 
             if self.which == "both" and self.grouping == "separate":
                 self.cont = self.ax1.pcolormesh(self.x,self.y,self.field[0,:,:],shading='nearest',
@@ -751,7 +868,7 @@ class PAticAnimator:
                                                  color='k',
                                                  pivot='mid',
                                                  width=0.0025,headwidth=2.5,headlength=5,headaxislength=4.5,
-                                                 scale_units='xy',scale=None,zorder=1)
+                                                 scale_units='xy',angles='xy',scale=(1/(2*np.log10(np.abs(self.x1-self.x0)))),zorder=1)
                 else:
                     self.patch = self.ax2.scatter(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],
                                                   marker=self._markers["patch"],
@@ -792,7 +909,7 @@ class PAticAnimator:
                                                      color='k',
                                                      pivot='mid',
                                                      width=0.0025,headwidth=2.5,headlength=5,headaxislength=4.5,
-                                                     scale_units='xy',scale=None,zorder=1)
+                                                     scale_units='xy',angles='xy',scale=(1/(2*np.log10(np.abs(self.x1-self.x0)))),zorder=1)
                     else:
                         self.patch = self.ax1.scatter(self.x[::self._slc_y,::self._slc_x],self.y[::self._slc_y,::self._slc_x],
                                                       marker=self._markers["patch"],
@@ -825,7 +942,7 @@ class PAticAnimator:
                                                          color='k',
                                                          pivot='mid',
                                                          width=0.0025,headwidth=2.5,headlength=5,headaxislength=4.5,
-                                                         scale_units='xy',scale=None,zorder=1)
+                                                         scale_units='xy',angles='xy',scale=(1/(2*np.log10(np.abs(self.x1-self.x0)))),zorder=1)
                         else:
                             point_kwarg = {"c":self.marker_colors["point"]}
                             patch_kwarg = {"c":self.marker_colors["patch"]}
@@ -835,7 +952,7 @@ class PAticAnimator:
                                                          cmap=self.colormap,
                                                          pivot='mid',
                                                          width=0.0025,headwidth=2.5,headlength=5,headaxislength=4.5,
-                                                         scale_units='xy',scale=None,zorder=1)
+                                                         scale_units='xy',angles='xy',scale=(1/(2*np.log10(np.abs(self.x1-self.x0)))),zorder=1)
                         elif self.p == 2:
                             point_kwarg = {"c":self.field[0,::self._slc_y,::self._slc_x],"cmap":self.colormap}
                         else:
@@ -849,7 +966,7 @@ class PAticAnimator:
                                                          cmap=self.colormap,
                                                          pivot='mid',
                                                          width=0.0025,headwidth=2.5,headlength=5,headaxislength=4.5,
-                                                         scale_units='xy',scale=None,zorder=1)
+                                                         scale_units='xy',angles='xy',scale=(1/(2*np.log10(np.abs(self.x1-self.x0)))),zorder=1)
                         elif self.p == 2:
                             point_kwarg = {"c":self.field[0,::self._slc_y,::self._slc_x],"cmap":self.colormap}
                         else:
@@ -892,38 +1009,48 @@ class PAticAnimator:
                     self.cont.set_clim([np.min(self.field),np.max(self.field)])
                     self.CB = self.fig.colorbar(self.cont,ax=self.ax1,fraction=0.07,pad=0.0175,ticks=np.linspace(np.min(self.field),np.max(self.field),9))
                 self.CB.ax.set_facecolor(self.ax_fc)
+                self.CB.set_label(r'$\text{arg}\left(\mathbf{n}^{(%d)}\right)$' % self.p,rotation='vertical',fontsize=self.CB_label_fontsize)
+                self.CB.ax.tick_params(labelsize=self.CB_tick_fontsize)
 
-                if self.field_type == 'phase':
-                    tick_labels = []
-                    for i in range(9):
-                        n = np.abs(4 - i)
-                        d = 4*self.p
+                tick_labels = []
+                for m in range(9):
+                    n = np.abs(4-m)
+                    d = 4*self.p
 
-                        nr = n/np.gcd(n,d)
-                        dr = d/np.gcd(n,d)
+                    nr = n/np.gcd(n,d)
+                    dr = d/np.gcd(n,d)
 
-                        if i < 4:
-                            if nr == 1 and dr == 1:
-                                label = r'$-\pi$'
-                            elif nr == 1:
-                                label = r'$-\frac{\pi}{%d}$' % dr
-                            elif dr == 1:
-                                label = r'$-%d\pi$' % nr
-                            else:
-                                label = r'$-\frac{%d\pi}{%d}$' % (nr,dr)
-                        elif i == 4:
-                            label = r'$0$'
+                    if m < 4:
+                        if nr == 1 and dr == 1:
+                            label = r'$-\pi$'
+                        elif nr == 1:
+                            label = r'$-\frac{\pi}{%d}$' % dr
+                        elif dr == 1:
+                            label = r'$-%d\pi$' % nr
                         else:
-                            if nr == 1 and dr == 1:
-                                label = r'$\pi$'
-                            elif nr == 1:
-                                label = r'$\frac{\pi}{%d}$' % dr
-                            elif dr == 1:
-                                label = r'$%d\pi$' % nr
-                            else:
-                                label = r'$\frac{%d\pi}{%d}$' % (nr,dr)
-                        tick_labels.append(label)
-                    self.CB.set_ticklabels(tick_labels)
+                            label = r'$-\frac{%d\pi}{%d}$' % (nr,dr)
+                    elif m == 4:
+                        label = r'$0$'
+                    else:
+                        if nr == 1 and dr == 1:
+                            label = r'$\pi$'
+                        elif nr == 1:
+                            label = r'$\frac{\pi}{%d}$' % dr
+                        elif dr == 1:
+                            label = r'$%d\pi$' % nr
+                        else:
+                            label = r'$\frac{%d\pi}{%d}$' % (nr,dr)
+                    tick_labels.append(label)
+
+                self.CB.set_ticklabels(tick_labels)
+
+        if self.timestamp:
+            xc = (self.x0 + self.x1)/2
+            yc = (self.y0 + self.y1)/2
+            x0ts = self.x0 + 0.05*(xc-self.x0)
+            y0ts = self.y0 + 0.05*(yc-self.y0)
+            self.ts_text = self.ax1.text(x0ts,y0ts,r'$t/\tau=0$',ha='left',va='bottom',fontsize=self.ts_fontsize,color=self.ts_color)
+            self.ts_text.set_bbox(dict(facecolor=self.ts_bbox_facecolor,alpha=self.ts_bbox_alpha))
 
         self.fig.tight_layout()
 
@@ -1107,29 +1234,34 @@ class PAticAnimator:
         Calls on:
             - _update_markers
         '''
-        if self.field_type == 'complex':
-            self.CB.remove()
-            self.cont.remove()
+        if not self.director:
+            try:
+                self.cont.remove()
+            except:
+                pass
+
+            try:
+                self.arrows.remove()
+            except:
+                pass
+
+            try:
+                self.CB.remove()
+            except:
+                pass
 
             GS = mgs.GridSpec(1,1,figure=self.fig)
             self.ax1.set_subplotspec(GS[0])
 
-            self.RGBA = self.SM.to_rgba(self.thetas[i,:,:])
-            self.RGBA[:,:,-1] = self.rs_norm[i,:,:]
-
-            self.cont = self.ax1.pcolormesh(self.x,self.y,self.RGBA,shading='nearest',cmap=self.colormap,vmin=np.min(self.thetas),vmax=np.max(self.thetas),zorder=0)
-            self.CB = self.fig.colorbar(self.SM,ax=self.ax1,fraction=0.07,pad=0.0175,ticks=np.linspace(np.min(self.thetas),np.max(self.thetas),9))
-            self.CB.ax.set_facecolor(self.ax_fc)
-
             tick_labels = []
-            for i in range(9):
-                n = np.abs(4 - i)
-                d = 4*self.p
+            for m in range(9):
+                n = np.abs(4-m)
+                d = 4
 
                 nr = n/np.gcd(n,d)
                 dr = d/np.gcd(n,d)
 
-                if i < 4:
+                if m < 4:
                     if nr == 1 and dr == 1:
                         label = r'$-\pi$'
                     elif nr == 1:
@@ -1138,7 +1270,7 @@ class PAticAnimator:
                         label = r'$-%d\pi$' % nr
                     else:
                         label = r'$-\frac{%d\pi}{%d}$' % (nr,dr)
-                elif i == 4:
+                elif m == 4:
                     label = r'$0$'
                 else:
                     if nr == 1 and dr == 1:
@@ -1150,7 +1282,71 @@ class PAticAnimator:
                     else:
                         label = r'$\frac{%d\pi}{%d}$' % (nr,dr)
                 tick_labels.append(label)
-            self.CB.set_ticklabels(tick_labels)
+
+            if self.field_type == 'complex':
+                self.RGBA = self.SM.to_rgba(self.thetas[i,:,:])
+
+                self._vx = self.rs[i,:,:]*np.cos(self.thetas[i,:,:])
+                self._vy = self.rs[i,:,:]*np.sin(self.thetas[i,:,:])
+
+                if self.which == 'pf':
+                    self.RGBA[:,:,-1] = self.rs_norm[i,:,:]
+                    self.cont = self.ax1.pcolormesh(self.x,self.y,self.RGBA,shading='nearest',cmap=self.colormap,vmin=np.min(self.thetas),vmax=np.max(self.thetas),zorder=0)
+                elif self.which == 'op':
+                    self.arrow.set_UVC(self._vx[i,::self._slc_y,::self._slc_x],self._vy[i,::self._slc_y,::self._slc_x])
+                elif self.which == 'both':
+                    self.RGBA[:,:,-1] = self.pf_transparency
+                    if self.mode == 0:
+                        self.cont = self.ax1.pcolormesh(self.x,self.y,self.RGBA,shading='nearest',cmap=self.colormap,vmin=np.min(self.thetas),vmax=np.max(self.thetas),alpha=self.pf_transparency,zorder=0)
+                        self.arrow.set_UVC(self._vx[::self._slc_y,::self._slc_x],self._vy[::self._slc_y,::self._slc_x])
+                    elif self.mode == 1:
+                        self.arrow.set_UVC(self._vx[::self._slc_y,::self._slc_x],self._vy[::self._slc_y,::self._slc_x],self.thetas[i,::self._slc_y,::self._slc_x])
+                    elif self.mode == 2:
+                        self.cont = self.ax1.pcolormesh(self.x,self.y,self.RGBA,shading='nearest',cmap=self.colormap,vmin=np.min(self.thetas),vmax=np.max(self.thetas),alpha=self.pf_transparency,zorder=0)
+                        self.arrow.set_UVC(self._vx[::self._slc_y,::self._slc_x],self._vy[::self._slc_y,::self._slc_x],self.thetas[i,::self._slc_y,::self._slc_x])
+                if self.which != 'op':
+                    self.CB = self.fig.colorbar(self.SM,ax=self.ax1,fraction=0.07,pad=0.0175,ticks=np.linspace(np.min(self.thetas),np.max(self.thetas),9))
+                    self.CB.set_label(r'$\text{arg}\left(\Psi_p\right)$',rotation='vertical',fontsize=self.CB_label_fontsize)
+                    self.CB.ax.tick_params(labelsize=self.CB_tick_fontsize)
+                    self.CB.ax.set_facecolor(self.ax_fc)
+                    self.CB.set_ticklabels(tick_labels)
+            elif self.field_type == 'phase':
+                self.RGBA = self.SM.to_rgba(self.thetas[i,:,:])
+
+                self._vx = np.cos(self.thetas[i,:,:])
+                self._vy = np.sin(self.thetas[i,:,:])
+
+                if self.which == 'pf':
+                    self.cont = self.ax1.pcolormesh(self.x,self.y,self.RGBA,shading='nearest',cmap=self.colormap,vmin=np.min(self.thetas),vmax=np.max(self.thetas),zorder=0)
+                elif self.which == 'op':
+                    self.arrow.set_UVC(self._vx[::self._slc_y,::self._slc_x],self._vy[::self._slc_y,::self._slc_x])
+                elif self.which == 'both':
+                    if self.mode == 0:
+                        self.cont = self.ax1.pcolormesh(self.x,self.y,self.RGBA,shading='nearest',cmap=self.colormap,vmin=np.min(self.thetas),vmax=np.max(self.thetas),zorder=0)
+                        self.arrow.set_UVC(self._vx[::self._slc_y,::self._slc_x],self._vy[::self._slc_y,::self._slc_x])
+                    elif self.mode == 1:
+                        self.arrow.set_UVC(self._vx[::self._slc_y,::self._slc_x],self._vy[::self._slc_y,::self._slc_x],self.thetas[i,::self._slc_y,::self._slc_x])
+                    elif self.mode == 2:
+                        self.cont = self.ax1.pcolormesh(self.x,self.y,self.RGBA,shading='nearest',cmap=self.colormap,vmin=np.min(self.thetas),vmax=np.max(self.thetas),zorder=0)
+                        self.arrow.set_UVC(self._vx[::self._slc_y,::self._slc_x],self._vy[::self._slc_y,::self._slc_x],self.thetas[i,::self._slc_y,::self._slc_x])
+                if self.which != 'op':
+                    self.CB = self.fig.colorbar(self.SM,ax=self.ax1,fraction=0.07,pad=0.0175,ticks=np.linspace(np.min(self.thetas),np.max(self.thetas),9))
+                    self.CB.set_label(r'$\text{arg}\left(\Psi_p\right)$',rotation='vertical',fontsize=self.CB_label_fontsize)
+                    self.CB.ax.tick_params(labelsize=self.CB_tick_fontsize)
+                    self.CB.ax.set_facecolor(self.ax_fc)
+                    self.CB.set_ticklabels(tick_labels)
+            elif self.field_type == 'magnitude':
+                self.RGBA = self.SM.to_rgba(self.rs[i,:,:])
+
+                self.cont = self.ax1.pcolormesh(self.x,self.y,self.RGBA,shading='nearest',cmap=self.colormap,vmin=np.min(self.rs),vmax=np.max(self.rs),zorder=0)
+                self.CB = self.fig.colorbar(self.SM,ax=self.ax1,fraction=0.07,pad=0.0175,ticks=np.linspace(np.min(self.rs),np.max(self.rs),9))
+                self.CB.set_label(r'$\left|\Psi_p\right|\,\left[\left|\Psi_0\right|\right]$',rotation='vertical',fontsize=self.CB_label_fontsize)
+                self.CB.ax.tick_params(labelsize=self.CB_tick_fontsize)
+                self.CB.ax.set_facecolor(self.ax_fc)
+
+                ticks = np.linspace(0,1,9)
+                tick_labels = [str(tick) for tick in ticks]
+                self.CB.set_ticklabels(tick_labels)
         else:
             if self.which == "pf":
                 self.CB.remove()
@@ -1158,8 +1354,6 @@ class PAticAnimator:
                 self.cont = self.ax1.pcolormesh(self.x,self.y,self.field[i,:,:],shading='nearest',
                                                 cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.field),vmax=np.max(self.field),zorder=0)
                 self.cont.set_clim([np.min(self.field),np.max(self.field)])
-                self.CB = self.fig.colorbar(self.cont,ax=self.ax1,fraction=0.07,pad=0.0175,ticks=np.linspace(np.min(self.field),np.max(self.field),9))
-                self.CB.ax.set_facecolor(self.ax_fc)
             else:
                 if self.p == 1:
                     self.arrow.set_UVC(self._vx[i,::self._slc_y,::self._slc_x],self._vy[i,::self._slc_y,::self._slc_x])
@@ -1170,7 +1364,7 @@ class PAticAnimator:
 
                     for j in range(0,len(self.field[i,:,:]),self._slc_y):
                         for k in range(0,len(self.field[i,j,:]),self._slc_x):
-                            t = Affine2D().rotate_deg(self.field[i,j,k]-90)
+                            t = Affine2D().rotate_deg(self.field[i,j,k]*(180/np.pi)-90)
                             patch_markers.append(mpath.Path.unit_regular_polygon(self.p).transformed(t))
                             point_markers.append(mpath.Path.unit_regular_asterisk(self.p).transformed(t))
                             tick_markers.append(mpath.Path.unit_regular_asterisk(1).transformed(t))
@@ -1184,9 +1378,8 @@ class PAticAnimator:
                         self.cont = self.ax1.pcolormesh(self.x,self.y,self.field[i,:,:],shading='nearest',
                                                         cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.field),vmax=np.max(self.field),zorder=0)
                         self.cont.set_clim([np.min(self.field),np.max(self.field)])
-                        self.CB = self.fig.colorbar(self.cont,ax=self.ax1,fraction=0.07,pad=0.0175,ticks=np.linspace(np.min(self.field),np.max(self.field),9))
-                        self.CB.ax.set_facecolor(self.ax_fc)
                     elif self.mode == 1:
+                        self.CB.remove()
                         if self.p == 1:
                             self.arrow.set_array(self.field[i,::self._slc_y,::self._slc_x].ravel())
                         elif self.p == 2:
@@ -1199,8 +1392,6 @@ class PAticAnimator:
                         self.cont = self.ax1.pcolormesh(self.x,self.y,self.field[i,:,:],shading='nearest',
                                                         cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.field),vmax=np.max(self.field),zorder=0)
                         self.cont.set_clim([np.min(self.field),np.max(self.field)])
-                        self.CB = self.fig.colorbar(self.cont,ax=self.ax1,fraction=0.07,pad=0.0175,ticks=np.linspace(np.min(self.field),np.max(self.field),9))
-                        self.CB.ax.set_facecolor(self.ax_fc)
                         if self.p == 1:
                             self.arrow.set_array(self.field[i,::self._slc_y,::self._slc_x].ravel())
                         elif self.p == 2:
@@ -1213,19 +1404,27 @@ class PAticAnimator:
                     self.cont = self.ax1.pcolormesh(self.x,self.y,self.field[i,:,:],shading='nearest',
                                                     cmap=self.colormap,alpha=self.pf_transparency,vmin=np.min(self.field),vmax=np.max(self.field),zorder=0)
                     self.cont.set_clim([np.min(self.field),np.max(self.field)])
-                    self.CB = self.fig.colorbar(self.cont,ax=self.ax1,fraction=0.07,pad=0.0175,ticks=np.linspace(np.min(self.field),np.max(self.field),9))
-                    self.CB.ax.set_facecolor(self.ax_fc)
 
-            if self.field_type == 'phase':
+            if self.which != 'op':
+                if self.grouping == 'together' and self.mode == 1:
+                    self.SM.set_clim([np.min(self.field),np.max(self.field)])
+                    self.CB = self.fig.colorbar(self.SM,ax=self.ax1,fraction=0.07,pad=0.0175,ticks=np.linspace(np.min(self.field),np.max(self.field),9))
+                else:
+                    self.cont.set_clim([np.min(self.field),np.max(self.field)])
+                    self.CB = self.fig.colorbar(self.cont,ax=self.ax1,fraction=0.07,pad=0.0175,ticks=np.linspace(np.min(self.field),np.max(self.field),9))
+                self.CB.ax.set_facecolor(self.ax_fc)
+                self.CB.set_label(r'$\text{arg}\left(\mathbf{n}^{(%d)}\right)$' % self.p,rotation='vertical',fontsize=self.CB_label_fontsize)
+                self.CB.ax.tick_params(labelsize=self.CB_tick_fontsize)
+
                 tick_labels = []
-                for i in range(9):
-                    n = np.abs(4 - i)
+                for m in range(9):
+                    n = np.abs(4-m)
                     d = 4*self.p
 
                     nr = n/np.gcd(n,d)
                     dr = d/np.gcd(n,d)
 
-                    if i < 4:
+                    if m < 4:
                         if nr == 1 and dr == 1:
                             label = r'$-\pi$'
                         elif nr == 1:
@@ -1234,7 +1433,7 @@ class PAticAnimator:
                             label = r'$-%d\pi$' % nr
                         else:
                             label = r'$-\frac{%d\pi}{%d}$' % (nr,dr)
-                    elif i == 4:
+                    elif m == 4:
                         label = r'$0$'
                     else:
                         if nr == 1 and dr == 1:
@@ -1246,7 +1445,14 @@ class PAticAnimator:
                         else:
                             label = r'$\frac{%d\pi}{%d}$' % (nr,dr)
                     tick_labels.append(label)
+
                 self.CB.set_ticklabels(tick_labels)
+        
+        if self.timestamp:
+            if self.ts is not None:
+                self.ts_text.set_text(r'$t/\tau=%.2f$' % self.ts[i])
+            else:
+                self.ts_text.remove()
 
     def set_grid(self,c,which='both'):
         '''
@@ -1695,8 +1901,7 @@ class PAticAnimator:
                 The colormap can be given as a string with the name of any of the standard
                 Matplotlib colormaps, or as a Matplotlib colormap object.
         '''
-        # add checks for colormap
-        
+
         self.colormap = colormap
 
     def set_pf_transparency(self,alpha):
@@ -1723,6 +1928,16 @@ class PAticAnimator:
         else:
             self.pf_transparency = alpha
 
+    def set_timestamp_props(self,prop,which=None):
+        if which == 'fontsize':
+            self.ts_fontsize = prop
+        elif which == 'color':
+            self.ts_color = prop
+        elif which == 'bbox_color':
+            self.ts_bbox_facecolor = prop
+        elif which == 'bbox_alpha':
+            self.ts_bbox_alpha = prop
+
     def preview(self,frame=None):
         '''
         Allows the user to preview a single frame of the animation.
@@ -1734,8 +1949,6 @@ class PAticAnimator:
         '''
         if self.field is None:
             raise Exception("""No data to display.""")
-        elif self.x is None or self.y is None:
-            raise Exception("""Cannot make a plot without a fully defined coordinate grid.""")
         else:
             self._initialize_plot()
 
@@ -1748,6 +1961,22 @@ class PAticAnimator:
             else:
                 self._draw_frame(0)
         plt.show()
+
+    def saveframe(self,frame=0):
+        if self.field is None:
+            raise Exception("""No data to display.""")
+        else:
+            self._initialize_plot()
+
+            if frame is not None:
+                if not isinstance(frame,int):
+                    raise TypeError("""frame must be an integer.""")
+                elif isinstance(frame,int) and frame >= self.nt:
+                    frame = self.nt - 1
+                self._draw_frame(frame)
+            else:
+                self._draw_frame(0)
+        plt.savefig('./frame_%d.png' % frame)
 
     def animate(self,ext='gif'):
         '''
